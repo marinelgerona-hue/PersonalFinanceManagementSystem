@@ -1,5 +1,6 @@
 -- Realistic sample data for one Finance Management account (May – mid-October 2026).
--- Replaces that account's income, expenses, budgets and savings goals. Other accounts are untouched.
+-- Replaces that account's income, expenses, budgets, savings goals and recurring
+-- transactions. Other accounts are untouched.
 --
 -- Usage (Docker MySQL from this repo's setup) — pick the account by email:
 --   { echo "SET @email = 'you@example.com';"; cat scripts/seed-sample-data.sql; } \
@@ -16,6 +17,7 @@ START TRANSACTION;
 -- Clear this account's existing finance data
 DELETE c FROM GoalContributions c WHERE c.UserId = @u;
 DELETE FROM SavingsGoals WHERE UserId = @u;
+DELETE FROM RecurringTransactions WHERE UserId = @u;
 DELETE FROM Expenses WHERE UserId = @u;
 DELETE FROM Budgets WHERE UserId = @u;
 DELETE FROM Incomes WHERE UserId = @u;
@@ -212,6 +214,35 @@ INSERT INTO GoalContributions (GoalId, UserId, Amount, Date, Note) VALUES
   (@g, @u, 400.00, '2026-09-05', 'Monthly transfer'),
   (@g, @u, 400.00, '2026-10-05', 'Monthly transfer');
 
+-- Recurring transactions (Type: 0=Income, 1=Expense · Frequency: 0=Daily, 1=Weekly,
+-- 2=Biweekly, 3=Monthly, 4=Yearly · IncomePool reuses the Income period enum:
+-- 0=Daily, 1=Weekly, 2=Monthly, 3=Yearly). Dates are chosen relative to "today"
+-- in this sample world (mid-October 2026) to show every state the feature has:
+-- one item already overdue, two due within the next two weeks (one of them an
+-- income), a yearly bill, and one paused item.
+INSERT INTO RecurringTransactions (UserId, Type, Label, Amount, Frequency, StartDate, NextDueDate, EndDate, IsActive, Note, IncomePool, BudgetId) VALUES
+  -- Rent, due the 1st of each month — next occurrence is November.
+  (@u, 1, 'Housing', 1850.00, 3, '2026-05-01', '2026-11-01', NULL, 1, 'Rent — Maple Court apartment', 2, NULL),
+  -- Home internet, due the 4th — next occurrence is November.
+  (@u, 1, 'Utilities', 69.99, 3, '2026-05-04', '2026-11-04', NULL, 1, 'Home internet — Comcast', 2, NULL),
+  -- Netflix, due the 8th — next occurrence is November.
+  (@u, 1, 'Entertainment', 15.49, 3, '2026-05-08', '2026-11-08', NULL, 1, 'Netflix subscription', 2, NULL),
+  -- Gym membership, billed on the 30th — due in ~2 weeks (shows as "due soon").
+  (@u, 1, 'Health', 49.00, 3, '2026-05-30', '2026-10-30', NULL, 1, 'Gym membership — Equinox', 2, NULL),
+  -- Small cloud storage subscription, billed on the 15th — overdue by 2 days,
+  -- so the first page load after seeding demonstrates catch-up generation.
+  (@u, 1, 'Entertainment', 2.99, 3, '2026-05-15', '2026-10-15', NULL, 1, 'iCloud+ 200GB storage', 2, NULL),
+  -- Car insurance, once a year — next renewal is months away.
+  (@u, 1, 'Transportation', 780.00, 4, '2026-03-01', '2027-03-01', NULL, 1, 'Car insurance — annual premium', 2, NULL),
+  -- Personal website domain, once a year — renews in 3 days (shows as "due soon").
+  (@u, 1, 'Other', 14.00, 4, '2025-10-20', '2026-10-20', NULL, 1, 'Domain renewal — personal website', 2, NULL),
+  -- Pet insurance — paused (coverage on hold), so it never generates or alerts.
+  (@u, 1, 'Shopping', 35.00, 3, '2026-06-01', '2026-11-01', NULL, 0, 'Pet insurance — Mittens (on hold)', 2, NULL),
+  -- Weekend tutoring, weekly income — next session is in a week (shows as "due soon").
+  (@u, 0, 'Freelance', 120.00, 1, '2026-09-05', '2026-10-24', NULL, 1, 'Tutoring — weekend sessions', NULL, NULL),
+  -- Part-time contract, paid every two weeks — next payment is in ~2 weeks.
+  (@u, 0, 'Freelance', 850.00, 2, '2026-10-02', '2026-10-30', NULL, 1, 'Part-time contract — Riverside Design Co.', NULL, NULL);
+
 COMMIT;
 
 SELECT
@@ -219,4 +250,5 @@ SELECT
   (SELECT COUNT(*) FROM Expenses WHERE UserId = @u) AS expenses,
   (SELECT COUNT(*) FROM Budgets WHERE UserId = @u) AS budgets,
   (SELECT COUNT(*) FROM SavingsGoals WHERE UserId = @u) AS goals,
-  (SELECT COUNT(*) FROM GoalContributions WHERE UserId = @u) AS contributions;
+  (SELECT COUNT(*) FROM GoalContributions WHERE UserId = @u) AS contributions,
+  (SELECT COUNT(*) FROM RecurringTransactions WHERE UserId = @u) AS recurring_transactions;
