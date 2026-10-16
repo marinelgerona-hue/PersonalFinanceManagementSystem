@@ -71,7 +71,7 @@
             <a class="report-pill @(Model.PeriodFilter == IncomePeriod.Yearly ? "active" : "")" asp-action="Index" asp-route-period="@IncomePeriod.Yearly">Yearly</a>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-soft" asp-action="Export"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+            <a class="btn btn-soft" asp-action="Export"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
             <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Income</a>
         </div>
     </div>
@@ -95,7 +95,6 @@
             <div class="empty-state">
                 <svg class="ico ico-lg text-muted"><use href="#i-income"/></svg>
                 <p>No income yet. Add your first income record to get started.</p>
-                <a class="btn btn-fin btn-sm" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Income</a>
             </div>
         }
         else
