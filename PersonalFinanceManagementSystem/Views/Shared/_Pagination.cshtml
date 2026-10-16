@@ -1,0 +1,75 @@
+@model PagerModel
+@* Footer for a listing: rows per page, "Showing X–Y of Z" and page links. All links keep the other query values. *@
+@{
+    var req = Context.Request;
+}
+<nav class="pager" aria-label="Pagination">
+    <form method="get" class="pager-size">
+        @foreach (var kv in req.Query.Where(kv => !new[] { "size", "page" }.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)))
+        {
+            <input type="hidden" name="@kv.Key" value="@kv.Value" />
+        }
+        <label for="pagerSize">Rows per page</label>
+        <select id="pagerSize" name="size" class="form-select form-select-sm" onchange="this.form.submit()">
+            @foreach (var n in Model.SizeOptions)
+            {
+                <option value="@n" selected="@(n == Model.Size)">@n</option>
+            }
+        </select>
+        <noscript><button type="submit" class="btn btn-soft btn-sm">Apply</button></noscript>
+    </form>
+
+    <span class="pager-summary">
+        @if (Model.TotalCount == 0)
+        {
+            @:No @Model.Noun
+        }
+        else
+        {
+            @:Showing <strong>@Model.From–@Model.To</strong> of <strong>@Model.TotalCount</strong> @Model.Noun
+        }
+    </span>
+
+    @if (Model.TotalPages > 1)
+    {
+        <ul class="pager-pages">
+            <li>
+                @if (Model.Page > 1)
+                {
+                    <a href="@req.WithQuery(("page", (Model.Page - 1).ToString()))" class="pager-btn" aria-label="Previous page"><svg class="ico-sm"><use href="#i-chevron-left"/></svg></a>
+                }
+                else
+                {
+                    <span class="pager-btn is-disabled" aria-hidden="true"><svg class="ico-sm"><use href="#i-chevron-left"/></svg></span>
+                }
+            </li>
+            @foreach (var n in Model.Window())
+            {
+                <li>
+                    @if (n == 0)
+                    {
+                        <span class="pager-gap">…</span>
+                    }
+                    else if (n == Model.Page)
+                    {
+                        <span class="pager-btn is-current" aria-current="page">@n</span>
+                    }
+                    else
+                    {
+                        <a href="@req.WithQuery(("page", n == 1 ? null : n.ToString()))" class="pager-btn" aria-label="Page @n">@n</a>
+                    }
+                </li>
+            }
+            <li>
+                @if (Model.Page < Model.TotalPages)
+                {
+                    <a href="@req.WithQuery(("page", (Model.Page + 1).ToString()))" class="pager-btn" aria-label="Next page"><svg class="ico-sm"><use href="#i-chevron-right"/></svg></a>
+                }
+                else
+                {
+                    <span class="pager-btn is-disabled" aria-hidden="true"><svg class="ico-sm"><use href="#i-chevron-right"/></svg></span>
+                }
+            </li>
+        </ul>
+    }
+</nav>

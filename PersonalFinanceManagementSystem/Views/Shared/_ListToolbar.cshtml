@@ -1,0 +1,24 @@
+@model ListQuery
+@* Search box for a listing. Keeps the page's other filters (period, month, sort…) and resets to page 1.
+   ViewData["SearchPlaceholder"] sets the hint text. *@
+@{
+    var keep = Context.Request.Query
+        .Where(kv => !new[] { "q", "page" }.Contains(kv.Key, StringComparer.OrdinalIgnoreCase))
+        .ToList();
+    var placeholder = ViewData["SearchPlaceholder"] as string ?? "Search…";
+}
+<form method="get" class="list-search" role="search">
+    @foreach (var kv in keep)
+    {
+        <input type="hidden" name="@kv.Key" value="@kv.Value" />
+    }
+    <svg class="ico-sm list-search-ico" aria-hidden="true"><use href="#i-search"/></svg>
+    <input type="search" name="q" value="@Model.Search" class="form-control" placeholder="@placeholder"
+           aria-label="@placeholder" autocomplete="off" data-list-search />
+    @if (Model.Search.Length > 0)
+    {
+        <a class="list-search-clear" href="@Context.Request.WithQuery(("q", null), ("page", null))" aria-label="Clear search" title="Clear search">
+            <svg class="ico-sm"><use href="#i-x"/></svg>
+        </a>
+    }
+</form>
