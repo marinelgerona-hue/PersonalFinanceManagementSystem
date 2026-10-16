@@ -80,10 +80,15 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("RecurringTransactionId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RecurringTransactionId");
 
                     b.HasIndex("UserId");
 
@@ -140,6 +145,9 @@ namespace PersonalFinanceManagementSystem.Migrations
                     b.Property<int>("Period")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RecurringTransactionId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -149,9 +157,62 @@ namespace PersonalFinanceManagementSystem.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RecurringTransactionId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Incomes");
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.RecurringTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("BudgetId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IncomePool")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("NextDueDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RecurringTransactions");
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.SavingsGoal", b =>
@@ -245,6 +306,11 @@ namespace PersonalFinanceManagementSystem.Migrations
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Expense", b =>
                 {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.RecurringTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("RecurringTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -268,6 +334,20 @@ namespace PersonalFinanceManagementSystem.Migrations
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Income", b =>
+                {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.RecurringTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("RecurringTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.RecurringTransaction", b =>
                 {
                     b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
                         .WithMany()

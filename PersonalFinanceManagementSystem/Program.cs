@@ -35,6 +35,8 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();
 
 builder.Services.AddScoped<IReportService, ReportService>();
+
+builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

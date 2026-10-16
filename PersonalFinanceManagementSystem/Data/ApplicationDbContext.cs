@@ -18,6 +18,7 @@ namespace PersonalFinanceManagementSystem.Data
         public DbSet<Budget> Budgets { get; set; }
         public DbSet<SavingsGoal> SavingsGoals { get; set; }
         public DbSet<GoalContribution> GoalContributions { get; set; }
+        public DbSet<RecurringTransaction> RecurringTransactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -74,6 +75,38 @@ namespace PersonalFinanceManagementSystem.Data
                 .WithMany()
                 .HasForeignKey(g => g.GoalId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // RecurringTransaction enums stored as int
+            modelBuilder.Entity<RecurringTransaction>()
+                .Property(r => r.Type)
+                .HasConversion<int>();
+            modelBuilder.Entity<RecurringTransaction>()
+                .Property(r => r.Frequency)
+                .HasConversion<int>();
+            modelBuilder.Entity<RecurringTransaction>()
+                .Property(r => r.IncomePool)
+                .HasConversion<int?>();
+
+            // User → RecurringTransaction
+            modelBuilder.Entity<RecurringTransaction>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // RecurringTransaction → generated Income/Expense rows: detach (don't
+            // cascade-delete or block deletion of the definition) so history survives.
+            modelBuilder.Entity<Income>()
+                .HasOne<RecurringTransaction>()
+                .WithMany()
+                .HasForeignKey(i => i.RecurringTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Expense>()
+                .HasOne<RecurringTransaction>()
+                .WithMany()
+                .HasForeignKey(e => e.RecurringTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

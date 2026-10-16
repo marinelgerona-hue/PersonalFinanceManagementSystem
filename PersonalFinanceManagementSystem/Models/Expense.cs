@@ -23,4 +23,8 @@ public class Expense
     /// the same category whose period contains the expense date.
     /// </summary>
     public int? BudgetId { get; set; }
+
+    /// <summary>Set when this row was auto-generated from a recurring definition.
+    /// Null for manually-entered expenses.</summary>
+    public int? RecurringTransactionId { get; set; }
 }
