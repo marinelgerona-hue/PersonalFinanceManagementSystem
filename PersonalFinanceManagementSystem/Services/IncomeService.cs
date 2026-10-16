@@ -56,6 +56,12 @@ public class IncomeService : IIncomeService
         return income;
     }
 
+    public void AddRange(IEnumerable<Income> incomes)
+    {
+        _db.Incomes.AddRange(incomes);
+        _db.SaveChanges();
+    }
+
     // ------------------------------------------------------------
     // Update income
     // ------------------------------------------------------------

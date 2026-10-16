@@ -8,6 +8,8 @@ public interface IIncomeService
     List<Income> GetAll(int userId);
     Income? Get(int userId, int id);
     Income Add(Income income);
+    /// <summary>Inserts several income records in a single round trip (e.g. CSV import).</summary>
+    void AddRange(IEnumerable<Income> incomes);
     bool Update(Income income);
     bool Delete(int userId, int id);
     decimal Total(int userId);

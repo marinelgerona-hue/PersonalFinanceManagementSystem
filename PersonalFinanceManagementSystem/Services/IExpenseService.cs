@@ -7,6 +7,8 @@ public interface IExpenseService
     List<Expense> GetAll(int userId);
     Expense? Get(int userId, int id);
     Expense Add(Expense expense);
+    /// <summary>Inserts several expenses in a single round trip (e.g. CSV import).</summary>
+    void AddRange(IEnumerable<Expense> expenses);
     bool Update(Expense expense);
     bool Delete(int userId, int id);
     decimal Total(int userId);

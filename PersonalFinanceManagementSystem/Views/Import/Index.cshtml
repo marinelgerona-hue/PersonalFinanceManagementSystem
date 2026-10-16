@@ -1,0 +1,48 @@
+@{
+    ViewData["Subtitle"] = "Bulk-add income and expenses from a file instead of entering them one by one.";
+}
+
+<div class="card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Import transactions</h2>
+            <div class="card-sub">Upload an Excel or CSV file in the template format below — you'll review what will be imported before anything is saved.</div>
+        </div>
+        <a class="btn btn-soft" asp-action="Sample"><svg class="ico-sm"><use href="#i-download"/></svg> Download sample file (.xlsx)</a>
+    </div>
+
+    <div class="card-body-fin">
+        <div class="banner banner-info mb-3">
+            <strong>Required format:</strong> <code>Date,Type,Category,Amount,Note</code> — <code>Type</code> is <code>Income</code> or <code>Expense</code>,
+            <code>Amount</code> is a positive number, <code>Note</code> is optional. The sample file shows the exact shape, but its rows are
+            placeholders — edit them (or add your own rows) before importing, or the file will be rejected as test data. A plain .csv
+            with the same columns works too.
+        </div>
+
+        <form asp-action="Preview" method="post" enctype="multipart/form-data">
+            <label for="importFile" class="dropzone" data-dropzone>
+                <svg class="ico dropzone-ico"><use href="#i-upload-cloud"/></svg>
+                <div class="dropzone-text">Drag &amp; drop a file here, or click to browse</div>
+                <div class="dropzone-hint">.xlsx or .csv — max 2 MB.</div>
+                <input type="file" name="file" id="importFile"
+                       accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                       class="d-none" required />
+            </label>
+
+            <div class="file-chosen" id="importFileChosen" hidden>
+                <span class="file-chosen-ico"><svg class="ico-sm"><use href="#i-file-text"/></svg></span>
+                <span>
+                    <div class="file-chosen-name" id="importFileName"></div>
+                    <div class="file-chosen-size" id="importFileSize"></div>
+                </span>
+                <button type="button" class="file-chosen-remove" id="importFileRemove" aria-label="Remove file">
+                    <svg class="ico-sm"><use href="#i-trash"/></svg>
+                </button>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-fin"><svg class="ico-sm"><use href="#i-upload"/></svg> Preview import</button>
+            </div>
+        </form>
+    </div>
+</div>

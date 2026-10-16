@@ -1,0 +1,142 @@
+@model ImportPreviewViewModel
+@{
+    ViewData["Subtitle"] = "Review what will be imported before anything is saved.";
+    var r = Model.Result;
+    var cur = Model.Currency;
+}
+
+@if (r.FileRejectedReason is not null)
+{
+    <div class="card-fin">
+        <div class="card-body-fin">
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-alert"/></svg>
+                <p>@r.FileRejectedReason</p>
+                <a class="btn btn-fin btn-sm" asp-action="Index">Back to import</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <section class="kpi-grid mb-3">
+        <article class="kpi">
+            <div class="kpi-head">
+                <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-check"/></svg></span>
+                <span class="kpi-label">Ready to import</span>
+            </div>
+            <div class="kpi-value">@r.Valid.Count</div>
+            <div class="kpi-foot">new transaction@(r.Valid.Count == 1 ? "" : "s")</div>
+        </article>
+        <article class="kpi">
+            <div class="kpi-head">
+                <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-clock"/></svg></span>
+                <span class="kpi-label">Duplicates</span>
+            </div>
+            <div class="kpi-value">@r.Duplicates.Count</div>
+            <div class="kpi-foot">already in your records — skipped</div>
+        </article>
+        <article class="kpi">
+            <div class="kpi-head">
+                <span class="kpi-icon tint-red"><svg class="ico"><use href="#i-alert"/></svg></span>
+                <span class="kpi-label">Rejected</span>
+            </div>
+            <div class="kpi-value">@r.Rejected.Count</div>
+            <div class="kpi-foot">row@(r.Rejected.Count == 1 ? "" : "s") with a problem</div>
+        </article>
+    </section>
+
+    @if (r.Valid.Count > 0)
+    {
+        <div class="card-fin mb-3">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Will be imported</h2>
+                    <div class="card-sub">@r.Valid.Count row@(r.Valid.Count == 1 ? "" : "s")</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="fin-table fin-table-fixed">
+                    <thead><tr><th class="col-date">Date</th><th class="col-chip-sm">Type</th><th>Category / Source</th><th class="text-end col-amount">Amount</th><th>Note</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in r.Valid)
+                        {
+                            <tr>
+                                <td class="text-nowrap text-muted">@Format.Date(row.Date)</td>
+                                <td><span class="chip @(row.Type == RecurringTransactionType.Income ? "chip-success" : "chip-muted")">@row.Type</span></td>
+                                <td><span class="dot" style="background:@Format.CategoryColor(row.Label)"></span>@row.Label</td>
+                                <td class="text-end amount @(row.Type == RecurringTransactionType.Income ? "" : "neg")">@(row.Type == RecurringTransactionType.Income ? "+" : "-")@Format.Money(row.Amount, cur)</td>
+                                <td class="text-muted note-cell">@(string.IsNullOrWhiteSpace(row.Note) ? "—" : row.Note)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (r.Duplicates.Count > 0)
+    {
+        <div class="card-fin mb-3">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Duplicates (skipped)</h2>
+                    <div class="card-sub">Already match an existing record on this account</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="fin-table fin-table-fixed">
+                    <thead><tr><th class="col-date">Date</th><th class="col-chip-sm">Type</th><th>Category / Source</th><th class="text-end col-amount">Amount</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in r.Duplicates)
+                        {
+                            <tr>
+                                <td class="text-nowrap text-muted">@Format.Date(row.Date)</td>
+                                <td><span class="chip chip-muted">@row.Type</span></td>
+                                <td class="text-muted">@row.Label</td>
+                                <td class="text-end amount text-muted">@Format.Money(row.Amount, cur)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (r.Rejected.Count > 0)
+    {
+        <div class="card-fin mb-3">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Rejected rows</h2>
+                    <div class="card-sub">Fix these in your file and re-upload if you want them included</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="fin-table fin-table-fixed">
+                    <thead><tr><th class="col-chip-sm">Line</th><th>Raw row</th><th>Reason</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in r.Rejected)
+                        {
+                            <tr>
+                                <td class="text-muted">@row.LineNumber</td>
+                                <td class="text-muted note-cell">@row.RawLine</td>
+                                <td class="text-neg">@row.RejectReason</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-soft" asp-action="Index">Cancel</a>
+        @if (r.Valid.Count > 0)
+        {
+            <form asp-action="Confirm" method="post">
+                <button type="submit" class="btn btn-fin"><svg class="ico-sm"><use href="#i-check"/></svg> Confirm import (@r.Valid.Count)</button>
+            </form>
+        }
+    </div>
+}

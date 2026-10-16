@@ -35,6 +35,12 @@ public class ExpenseService : IExpenseService
         return expense;
     }
 
+    public void AddRange(IEnumerable<Expense> expenses)
+    {
+        _db.Expenses.AddRange(expenses);
+        _db.SaveChanges();
+    }
+
     public bool Update(Expense expense)
     {
         var existing = _db.Expenses
