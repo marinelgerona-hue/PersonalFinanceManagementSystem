@@ -22,40 +22,59 @@
             }
         </select>
     </form>
-    <a class="btn btn-soft" asp-action="ExportBudgets" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportBudgets" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportBudgetsPdf" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
+    </div>
 </div>
 
 <div class="row g-3">
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-budget"/></svg></span>
-            <div class="stat-label">Total budgeted</div>
-            <div class="stat-value">@Format.Money(Model.TotalBudget, cur)</div>
-            <div class="stat-foot">@Model.Budgets.Count budget@(Model.Budgets.Count == 1 ? "" : "s")</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total budgeted</div>
+                    <div class="stat-value">@Format.Money(Model.TotalBudget, cur)</div>
+                    <div class="stat-foot">@Model.Budgets.Count budget@(Model.Budgets.Count == 1 ? "" : "s")</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-budget"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
-            <div class="stat-label">Total spent</div>
-            <div class="stat-value">@Format.Money(Model.TotalSpent, cur)</div>
-            <div class="stat-foot">@Format.Pct(Model.OverallPercent)% of budget</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total spent</div>
+                    <div class="stat-value">@Format.Money(Model.TotalSpent, cur)</div>
+                    <div class="stat-foot">@Format.Pct(Model.OverallPercent)% of budget</div>
+                </div>
+                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-check"/></svg></span>
-            <div class="stat-label">Total remaining</div>
-            <div class="stat-value @(Model.TotalRemaining < 0 ? "text-neg" : "")">@Format.Money(Model.TotalRemaining, cur)</div>
-            <div class="stat-foot">@Model.MonthLabel</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total remaining</div>
+                    <div class="stat-value @(Model.TotalRemaining < 0 ? "text-neg" : "")">@Format.Money(Model.TotalRemaining, cur)</div>
+                    <div class="stat-foot">@Model.MonthLabel</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-check"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon @(Model.OverCount > 0 ? "tint-red" : "tint-green")"><svg class="ico"><use href="#i-alert"/></svg></span>
-            <div class="stat-label">Over budget</div>
-            <div class="stat-value">@Model.OverCount</div>
-            <div class="stat-foot">@Model.NearCount close to limit</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Over budget</div>
+                    <div class="stat-value">@Model.OverCount</div>
+                    <div class="stat-foot">@Model.NearCount close to limit</div>
+                </div>
+                <span class="stat-icon @(Model.OverCount > 0 ? "tint-red" : "tint-green")"><svg class="ico"><use href="#i-alert"/></svg></span>
+            </div>
         </div>
     </div>
 </div>
