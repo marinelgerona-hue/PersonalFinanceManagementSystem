@@ -44,10 +44,18 @@ public class AddFundsViewModel
 
 public class GoalListViewModel
 {
+    /// <summary>All goals (used by the summary cards).</summary>
     public List<GoalProgress> Items { get; set; } = new();
+
+    /// <summary>The current page of the (searched, sorted) goal cards.</summary>
+    public PagedList<GoalProgress> Page { get; set; } = new();
+    public ListQuery Query { get; set; } = new();
+
     public string Currency { get; set; } = "USD";
     public decimal TotalSaved => Items.Sum(i => i.Saved);
     public decimal TotalTarget => Items.Sum(i => i.Target);
     public decimal OverallPercent => TotalTarget > 0 ? Math.Round(TotalSaved / TotalTarget * 100, 1) : 0;
     public decimal ThisMonthSaved { get; set; }
+    public int TotalCount => Items.Count;
+    public int CompletedCount => Items.Count(i => i.Completed);
 }

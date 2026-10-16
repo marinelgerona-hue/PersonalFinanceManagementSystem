@@ -3,13 +3,12 @@
     var isEdit = Model.Id > 0;
 }
 
-<div class="form-card card-fin" style="max-width:640px">
+<div class="form-card card-fin">
     <div class="card-head">
         <div>
-            <h2 class="card-title">@(isEdit ? "Edit Savings Goal" : "New Savings Goal")</h2>
+            <h2 class="card-title">Goal details</h2>
             <div class="card-sub">Name what you're saving for and set a target</div>
         </div>
-        <a class="btn btn-soft btn-sm" asp-action="Index">Cancel</a>
     </div>
 
     <div class="card-body-fin">
@@ -23,7 +22,7 @@
                 <span asp-validation-for="Name" class="text-danger small"></span>
             </div>
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="TargetAmount" class="form-label">Target amount</label>
                     <div class="input-group">
                         <span class="input-group-text">@Format.Symbol(ViewBag.User?.Currency)</span>
@@ -31,7 +30,7 @@
                     </div>
                     <span asp-validation-for="TargetAmount" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Deadline" class="form-label">Target date <span class="text-muted fw-normal">(optional)</span></label>
                     <input asp-for="Deadline" type="date" class="form-control" />
                     <span asp-validation-for="Deadline" class="text-danger small"></span>
@@ -42,9 +41,9 @@
                 <input asp-for="Note" class="form-control" placeholder="Why is this goal important?" />
                 <span asp-validation-for="Note" class="text-danger small"></span>
             </div>
-            <div class="d-flex gap-2 mt-4">
+            <div class="form-actions">
+                <a class="btn btn-soft" asp-action="Index">Cancel</a>
                 <button type="submit" class="btn btn-fin">@(isEdit ? "Save changes" : "Create goal")</button>
-                <a class="btn btn-soft" asp-action="Index">Back to goals</a>
             </div>
         </form>
     </div>

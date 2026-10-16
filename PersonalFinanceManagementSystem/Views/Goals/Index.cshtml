@@ -3,41 +3,51 @@
     var cur = Model.Currency;
 }
 
-<div class="row g-3 mb-3">
-    <div class="col-md-4">
-        <div class="card-fin mini-stat">
-            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
-            <div>
-                <div class="stat-label">Total saved</div>
-                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalSaved, cur)</div>
-            </div>
+<section class="kpi-grid">
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            <span class="kpi-label">Total saved</span>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card-fin mini-stat">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
-            <div>
-                <div class="stat-label">Total target</div>
-                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalTarget, cur)</div>
-                <div class="stat-foot">@Format.Pct(Model.OverallPercent)% overall progress</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card-fin mini-stat">
-            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
-            <div>
-                <div class="stat-label">Added this month</div>
-                <div class="stat-value stat-value-sm">@Format.Money(Model.ThisMonthSaved, cur)</div>
-            </div>
-        </div>
-    </div>
-</div>
+        <div class="kpi-value">@Format.Money(Model.TotalSaved, cur)</div>
+        <div class="kpi-foot"><span>across @Model.TotalCount goal@(Model.TotalCount == 1 ? "" : "s")</span></div>
+    </article>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
+            <span class="kpi-label">Overall progress</span>
+        </div>
+        <div class="kpi-value">@Format.Pct(Model.OverallPercent)%</div>
+        <div class="kpi-progress" role="progressbar" aria-valuenow="@Format.Pct(Model.OverallPercent)" aria-valuemin="0" aria-valuemax="100">
+            <span style="width:@Format.Pct(Math.Min(Model.OverallPercent, 100))%"></span>
+        </div>
+        <div class="kpi-foot"><span>of @Format.Money0(Model.TotalTarget, cur) target</span></div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
+            <span class="kpi-label">Added this month</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.ThisMonthSaved, cur)</div>
+        <div class="kpi-foot"><span>across all goals</span></div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-violet"><svg class="ico"><use href="#i-circle-check"/></svg></span>
+            <span class="kpi-label">Completed</span>
+        </div>
+        <div class="kpi-value">@Model.CompletedCount<span class="kpi-value-of"> / @Model.TotalCount</span></div>
+        <div class="kpi-foot"><span>goal@(Model.TotalCount == 1 ? "" : "s") fully funded</span></div>
+    </article>
+</section>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
     <div>
         <h2 class="section-title mb-0">Your goals</h2>
-        <div class="card-sub">Progress is calculated automatically as you add funds</div>
+        <div class="card-sub">Progress updates automatically as you add funds — plans show what to save daily, weekly or monthly to hit each target date.</div>
     </div>
     <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> New Goal</a>
 </div>
@@ -54,35 +64,77 @@
 }
 else
 {
-    <div class="card-sub mb-2">Plans show what to save daily, weekly and monthly to reach each goal by its target date — they update automatically as funds are added or the target date changes</div>
+    <div class="list-toolbar list-toolbar-cards">
+        @{ ViewData["SearchPlaceholder"] = "Search goals by name, note or status…"; }
+        <partial name="_ListToolbar" model="Model.Query" />
+        <form method="get" class="list-sort" data-sort-form>
+            @foreach (var kv in Context.Request.Query.Where(kv => !new[] { "sort", "dir", "page" }.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)))
+            {
+                <input type="hidden" name="@kv.Key" value="@kv.Value" />
+            }
+            <input type="hidden" name="sort" value="@Model.Query.Sort" />
+            <input type="hidden" name="dir" value="@Model.Query.Dir" />
+            <label for="goalSort">Sort by</label>
+            <select id="goalSort" class="form-select form-select-sm" data-sort-select>
+                <option value="deadline:asc" selected="@(Model.Query.Sort == "deadline" && Model.Query.Dir == "asc")">Deadline (soonest first)</option>
+                <option value="progress:desc" selected="@(Model.Query.Sort == "progress" && Model.Query.Dir == "desc")">Progress (highest first)</option>
+                <option value="progress:asc" selected="@(Model.Query.Sort == "progress" && Model.Query.Dir == "asc")">Progress (lowest first)</option>
+                <option value="remaining:desc" selected="@(Model.Query.Sort == "remaining" && Model.Query.Dir == "desc")">Amount to go (most first)</option>
+                <option value="saved:desc" selected="@(Model.Query.Sort == "saved" && Model.Query.Dir == "desc")">Amount saved (most first)</option>
+                <option value="name:asc" selected="@(Model.Query.Sort == "name" && Model.Query.Dir == "asc")">Name (A–Z)</option>
+            </select>
+        </form>
+    </div>
+
+    @if (Model.Page.TotalCount == 0)
+    {
+        <div class="card-fin">
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-search"/></svg>
+                <p>No goals match “@Model.Query.Search”.</p>
+                <a class="btn btn-soft btn-sm" href="@Context.Request.WithQuery(("q", null), ("page", null))">Clear search</a>
+            </div>
+        </div>
+    }
     <div class="row g-3">
-        @foreach (var g in Model.Items)
+        @foreach (var g in Model.Page.Items)
         {
+            var color = Format.CategoryColor(g.Goal.Name);
+            // The bar's colour follows the goal's actual status, not how far along it is —
+            // being 30% of the way to a goal eight months out isn't a warning, so it only
+            // turns amber/red when the goal is genuinely due soon or overdue.
+            var barClass = g.Completed ? "" : g.IsOverdue ? "over" : g.IsDueSoon ? "warn" : "info";
             <div class="col-lg-6">
                 <div class="card-fin goal-card">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h3 class="goal-name">@g.Goal.Name</h3>
-                            <div class="card-sub">
-                                @if (!string.IsNullOrWhiteSpace(g.Goal.Note))
-                                {
-                                    @g.Goal.Note
-                                }
-                                else if (g.Goal.Deadline is DateTime dl)
-                                {
-                                    <span><svg class="ico-sm"><use href="#i-calendar"/></svg> by @Format.Date(dl)</span>
-                                }
-                                else
-                                {
-                                    <span>No deadline</span>
-                                }
-                                @if (!string.IsNullOrEmpty(g.CountdownLabel))
-                                {
-                                    <span class="chip ms-1 @(!g.Completed && g.IsDueSoon ? "chip-warn" : g.IsOverdue ? "chip-danger" : "chip-info")">@g.CountdownLabel</span>
-                                }
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex gap-3 min-w-0">
+                            <span class="goal-icon" style="color:@color; background:color-mix(in srgb, @color 14%, white)">
+                                <svg class="ico"><use href="#i-goal"/></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <h3 class="goal-card-title">@g.Goal.Name</h3>
+                                <div class="goal-meta">
+                                    @if (!string.IsNullOrWhiteSpace(g.Goal.Note))
+                                    {
+                                        @g.Goal.Note
+                                    }
+                                    else if (g.Goal.Deadline is DateTime dl)
+                                    {
+                                        <span><svg class="ico-sm"><use href="#i-calendar"/></svg> by @Format.Date(dl)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>No deadline</span>
+                                    }
+                                    @* A finished goal has no countdown — "Deadline passed" would read like a problem. *@
+                                    @if (!g.Completed && !string.IsNullOrEmpty(g.CountdownLabel))
+                                    {
+                                        <span class="chip ms-1 @(!g.Completed && g.IsDueSoon ? "chip-warn" : g.IsOverdue ? "chip-danger" : "chip-info")">@g.CountdownLabel</span>
+                                    }
+                                </div>
                             </div>
                         </div>
-                        <span class="chip @g.StatusClass">@g.Status</span>
+                        <span class="chip @g.StatusClass text-nowrap">@g.Status</span>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-baseline mb-1">
@@ -90,10 +142,10 @@ else
                         <span class="text-muted small">of @Format.Money(g.Target, cur)</span>
                     </div>
                     <div class="progress-track progress-track-lg">
-                        <div class="progress-fill @(g.Completed ? "" : g.Percent >= 60 ? "" : "warn")" style="width:@Format.Pct(Math.Min(g.Percent, 100))%"></div>
+                        <div class="progress-fill @barClass" style="width:@Format.Pct(Math.Min(g.Percent, 100))%"></div>
                     </div>
-                    <div class="d-flex justify-content-between mt-1">
-                        <span class="small text-muted">@Format.Pct(g.Percent)% funded · status: @g.Status</span>
+                    <div class="d-flex justify-content-between mt-1 mb-3">
+                        <span class="small text-muted">@Format.Pct(g.Percent)% funded</span>
                         <span class="small text-muted">@Format.Money(g.Remaining, cur) to go</span>
                     </div>
 
@@ -101,35 +153,45 @@ else
                        load — contributions and target-date edits update it instantly. *@
                     @if (g.HasPlan)
                     {
-                        <div class="d-flex flex-wrap gap-2 mt-1 mb-3">
+                        <div class="d-flex flex-wrap gap-2 mb-3">
                             <span class="chip chip-success" title="Amount to set aside each day to reach the target by the deadline"><svg class="ico-sm"><use href="#i-calendar"/></svg> Daily: @Format.Money(g.SavePerDay ?? 0m, cur)</span>
                             <span class="chip chip-info" title="Amount to set aside each week"><svg class="ico-sm"><use href="#i-calendar"/></svg> Weekly: @Format.Money(g.SavePerWeek ?? 0m, cur)</span>
                             <span class="chip chip-warn" title="Amount to set aside each month"><svg class="ico-sm"><use href="#i-calendar"/></svg> Monthly: @Format.Money(g.SavePerMonth ?? 0m, cur)</span>
                         </div>
                     }
-                    else if (g.Goal.Deadline is DateTime past && g.DaysLeft < 0)
+                    else if (!g.Completed && g.Goal.Deadline is DateTime past && g.DaysLeft < 0)
                     {
-                        <div class="small text-muted mt-1 mb-3">Savings plan unavailable — the target date has passed. <a asp-action="Edit" asp-route-id="@g.Goal.Id">Change the target date</a> to get a fresh daily/weekly/monthly plan.</div>
+                        <div class="small text-muted mb-3">Savings plan unavailable — the target date has passed. <a asp-action="Edit" asp-route-id="@g.Goal.Id">Change the target date</a> to get a fresh daily/weekly/monthly plan.</div>
+                    }
+                    else if (!g.Completed)
+                    {
+                        <div class="small text-muted mb-3">Savings plan available once a target date is set.</div>
+                    }
+
+                    @if (g.Completed)
+                    {
+                        <div class="goal-done"><svg class="ico-sm"><use href="#i-circle-check"/></svg>Goal reached — nicely done.</div>
                     }
                     else
                     {
-                        <div class="mb-3"><span class="small text-muted">Savings plan available once a target date is set.</span></div>
+                        <form asp-action="AddFunds" method="post" class="add-funds-form auth-form">
+                            <input type="hidden" name="GoalId" value="@g.Goal.Id" />
+                            <input type="hidden" name="GoalName" value="@g.Goal.Name" />
+                            <input type="hidden" name="Date" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            @* Carries the current search/sort/page back through the redirect, so adding
+                               funds doesn't bounce you back to page 1 of the default view. *@
+                            <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                            <div class="d-flex gap-2">
+                                <div class="field-control flex-grow-1">
+                                    <svg class="field-icon" aria-hidden="true"><use href="#i-dollar"/></svg>
+                                    <input type="number" name="Amount" step="0.01" min="0.01" class="form-control" placeholder="Add funds" required />
+                                </div>
+                                <button type="submit" class="btn btn-fin text-nowrap"><svg class="ico-sm"><use href="#i-plus"/></svg> Add funds</button>
+                            </div>
+                        </form>
                     }
 
-                    <form asp-action="AddFunds" method="post" class="add-funds-form">
-                        <input type="hidden" name="GoalId" value="@g.Goal.Id" />
-                        <input type="hidden" name="GoalName" value="@g.Goal.Name" />
-                        <input type="hidden" name="Date" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                        <div class="d-flex gap-2">
-                            <div class="input-group input-group-sm flex-grow-1">
-                                <span class="input-group-text">@Format.Symbol(cur)</span>
-                                <input type="number" name="Amount" step="0.01" min="0.01" class="form-control" placeholder="Add funds" required />
-                            </div>
-                            <button type="submit" class="btn btn-fin btn-sm text-nowrap"><svg class="ico-sm"><use href="#i-plus"/></svg> Add funds</button>
-                        </div>
-                    </form>
-
-                    <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="d-flex justify-content-between align-items-center mt-3">
                         @if (g.Goal.Deadline is DateTime deadline)
                         {
                             <span class="small text-muted"><svg class="ico-sm"><use href="#i-calendar"/></svg> Target date: @Format.Date(deadline)</span>
@@ -141,6 +203,7 @@ else
                         <span>
                             <a class="btn-icon" asp-action="Edit" asp-route-id="@g.Goal.Id" title="Edit goal / target date"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
                             <form class="d-inline" asp-action="Delete" asp-route-id="@g.Goal.Id" method="post" onsubmit="return confirm('Delete this goal? Its saved amount will be removed.');">
+                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
                                 <button type="submit" class="btn-icon danger" title="Delete goal"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
                             </form>
                         </span>
@@ -149,4 +212,10 @@ else
             </div>
         }
     </div>
+    @if (Model.Page.TotalCount > 0)
+    {
+        <div class="card-fin mt-3 pager-card">
+            <partial name="_Pagination" model='Model.Page.ToPager(Model.Query, "goals")' />
+        </div>
+    }
 }
