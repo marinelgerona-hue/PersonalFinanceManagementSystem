@@ -8,8 +8,8 @@ namespace PersonalFinanceManagementSystem.Controllers;
 /// <summary>Settings — view and update basic user information and password.</summary>
 public class SettingsController : AppControllerBase
 {
-    /// <summary>Maximum accepted profile picture size (1 MB once Base64-encoded).</summary>
-    private const long MaxPhotoLength = 1_000_000;
+    /// <summary>Maximum accepted profile picture size (2 MB once Base64-encoded).</summary>
+    private const long MaxPhotoLength = 2_000_000;
 
     private static readonly string[] AllowedPhotoTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
 
@@ -84,7 +84,7 @@ public class SettingsController : AppControllerBase
 
         if (photo.Length > MaxPhotoLength)
         {
-            TempData["Error"] = "Image is too large. Please choose a picture under 1 MB.";
+            TempData["Error"] = "Image is too large. Please choose a picture under 2 MB.";
             return RedirectToAction(nameof(Index));
         }
 

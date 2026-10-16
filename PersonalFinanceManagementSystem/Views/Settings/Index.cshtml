@@ -28,35 +28,27 @@
 
             <div class="set-body">
                 <div class="set-photo">
-                    <span class="avatar avatar-lg">
-                        @if (hasPhoto)
-                        {
-                            <img src="@Model.ProfileImage" alt="Profile picture" class="avatar-img" />
-                        }
-                        else
-                        {
-                            @initials
-                        }
-                    </span>
-                    <div class="set-photo-text">
-                        <strong>Profile photo</strong>
-                        <span>JPG, PNG, GIF or WebP, up to 1 MB.</span>
-                    </div>
-                    <div class="set-photo-actions">
-                        <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" id="photoForm" class="m-0">
-                            <label class="btn btn-soft btn-sm mb-0">
-                                @(hasPhoto ? "Change photo" : "Upload photo")
-                                <input type="file" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" class="d-none"
-                                       onchange="this.form.submit()" />
-                            </label>
-                        </form>
-                        @if (hasPhoto)
-                        {
+                    <label class="form-label">Profile Picture</label>
+                    <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" id="photoForm" class="m-0">
+                        <label for="photoInput" class="dropzone" data-dropzone>
+                            <svg class="ico dropzone-ico"><use href="#i-upload-cloud"/></svg>
+                            <div class="dropzone-text">Drag &amp; drop a file here, or click to browse</div>
+                            <div class="dropzone-hint">JPG, PNG, GIF or WebP — max 2MB.</div>
+                            <input type="file" id="photoInput" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" class="d-none"
+                                   onchange="this.form.submit()" />
+                        </label>
+                    </form>
+                    @if (hasPhoto)
+                    {
+                        <div class="photo-thumb">
+                            <img src="@Model.ProfileImage" alt="Profile picture" />
                             <form asp-action="RemovePhoto" method="post" class="m-0">
-                                <button type="submit" class="btn btn-sm btn-text-danger">Remove</button>
+                                <button type="submit" class="photo-thumb-remove" aria-label="Remove photo">
+                                    <svg class="ico-sm"><use href="#i-trash"/></svg>
+                                </button>
                             </form>
-                        }
-                    </div>
+                        </div>
+                    }
                 </div>
 
                 <form asp-action="UpdateProfile" method="post" novalidate id="profileForm" class="auth-form set-form">
