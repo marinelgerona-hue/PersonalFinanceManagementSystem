@@ -75,7 +75,12 @@ public class BudgetListViewModel
     public int Year { get; set; }
     public int Month { get; set; }
     public string Currency { get; set; } = "USD";
+    /// <summary>All budgets for the month (used by the summary cards).</summary>
     public List<BudgetStatus> Items { get; set; } = new();
+
+    /// <summary>The current page of the (searched, sorted) budget table.</summary>
+    public PagedList<BudgetStatus> Page { get; set; } = new();
+    public ListQuery Query { get; set; } = new();
 
     public decimal TotalBudget => Items.Sum(i => i.Budget.Limit);
     public decimal TotalSpent => Items.Sum(i => i.Spent);

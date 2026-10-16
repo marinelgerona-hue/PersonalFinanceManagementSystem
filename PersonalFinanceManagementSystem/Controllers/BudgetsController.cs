@@ -14,15 +14,30 @@ public class BudgetsController : AppControllerBase
     public BudgetsController(IAuthService auth, IBudgetService budgets) : base(auth)
         => _budgets = budgets;
 
-    public IActionResult Index(int? year, int? month)
+    /// <summary>Sortable columns of the budget table.</summary>
+    private static readonly Dictionary<string, Func<BudgetStatus, object?>> BudgetSorts = new()
+    {
+        ["category"] = b => b.Budget.Category,
+        ["limit"] = b => b.Budget.Limit,
+        ["spent"] = b => b.Spent,
+        ["remaining"] = b => b.Remaining,
+        ["used"] = b => b.PercentUsed
+    };
+
+    public IActionResult Index(int? year, int? month, ListQuery query)
     {
         var now = DateTime.Now;
+        var items = _budgets.GetStatusForMonth(CurrentUser.Id, year ?? now.Year, month ?? now.Month);
+        query.Normalize(BudgetSorts.Keys, defaultSort: "used", defaultDir: "desc");
         var vm = new BudgetListViewModel
         {
             Year = year ?? now.Year,
             Month = month ?? now.Month,
             Currency = CurrentUser.Currency,
-            Items = _budgets.GetStatusForMonth(CurrentUser.Id, year ?? now.Year, month ?? now.Month)
+            Items = items,
+            Query = query,
+            Page = items.ToPaged(query, BudgetSorts,
+                (b, term) => ListQueryExtensions.AnyContains(term, b.Budget.Category, b.Budget.Period.ToString()))
         };
         ViewData["Title"] = "Budgets";
         ViewData["ActiveNav"] = "budgets";
