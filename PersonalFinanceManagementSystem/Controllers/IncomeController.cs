@@ -196,17 +196,20 @@ public class IncomeController : AppControllerBase
 
     // ------------------------------------------------------------ export
 
-    /// <summary>Downloads every income record as CSV.</summary>
+    /// <summary>Downloads every income record as an Excel workbook.</summary>
     [HttpGet]
     public IActionResult Export()
     {
         var items = _incomes.GetAll(CurrentUser.Id);
-        var csv = new Helpers.CsvFile("Date", "Source", "Period", "Amount", "Currency", "Note");
+        var csv = new Helpers.XlsxFile(Helpers.Format.Symbol(CurrentUser.Currency),
+            new[] { "Date", "Source", "Period", "Amount", "Currency", "Note" },
+            Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text,
+            Helpers.XlsxColumn.Currency, Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text);
         foreach (var item in items)
         {
             csv.AddRow(item.Date, item.Source, item.Period.ToString(), item.Amount, CurrentUser.Currency, item.Note);
         }
-        return csv.ToFileResult($"finapp-income-{DateTime.Today:yyyy-MM-dd}.csv");
+        return csv.ToFileResult($"finapp-income-{DateTime.Today:yyyy-MM-dd}.xlsx");
     }
 
     // ------------------------------------------------------------ delete
