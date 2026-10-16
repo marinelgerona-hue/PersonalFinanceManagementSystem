@@ -26,6 +26,7 @@ public class DashboardViewModel
     public List<BudgetStatus> Budgets { get; set; } = new();
     public List<GoalProgress> Goals { get; set; } = new();
     public List<RecentTransaction> Recent { get; set; } = new();
+    public List<UpcomingBill> UpcomingBills { get; set; } = new();
 
     public string FirstName { get; set; } = string.Empty;
 

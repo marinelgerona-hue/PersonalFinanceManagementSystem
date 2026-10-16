@@ -135,6 +135,29 @@ public class GoalProgress
     };
 }
 
+/// <summary>An upcoming or overdue recurring bill/income, for the bell and dashboard widget.</summary>
+public class UpcomingBill
+{
+    public RecurringTransaction Item { get; set; } = new();
+    public bool IsOverdue => Item.NextDueDate.Date < DateTime.Today;
+    public bool IsDueSoon => !IsOverdue && Item.NextDueDate.Date <= DateTime.Today.AddDays(7);
+    public int? DaysUntil => IsOverdue ? null : (Item.NextDueDate.Date - DateTime.Today).Days;
+
+    public string CountdownLabel => IsOverdue ? "Overdue"
+        : DaysUntil == 0 ? "Due today"
+        : DaysUntil == 1 ? "Due tomorrow"
+        : $"Due in {DaysUntil} days";
+
+    public string Status => IsOverdue ? "Overdue" : IsDueSoon ? "Due soon" : "Upcoming";
+
+    public string StatusClass => Status switch
+    {
+        "Overdue" => "chip-danger",
+        "Due soon" => "chip-warn",
+        _ => "chip-info"
+    };
+}
+
 /// <summary>A merged income/expense row for the "recent activity" list.</summary>
 public class RecentTransaction
 {

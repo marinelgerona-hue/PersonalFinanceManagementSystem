@@ -41,6 +41,16 @@ public abstract class AppControllerBase : Controller
 
         CurrentUser = user;
         ViewBag.User = user;
+
+        try
+        {
+            HttpContext.RequestServices.GetService<IRecurringTransactionService>()?.GenerateDueOccurrences(user.Id);
+        }
+        catch
+        {
+            // Catch-up generation must never break a page load.
+        }
+
         ViewBag.Nav = BuildNavState(user);
         base.OnActionExecuting(context);
     }
@@ -82,6 +92,19 @@ public abstract class AppControllerBase : Controller
                     Title = g.IsOverdue ? $"{g.Goal.Name} deadline passed" : $"{g.Goal.Name} is due soon",
                     Detail = $"{Format.Money0(g.Remaining, user.Currency)} still to save · {g.CountdownLabel}"
                 });
+
+            var bills = HttpContext.RequestServices.GetService<IRecurringTransactionService>()?.GetUpcoming(user.Id, 7) ?? new();
+            foreach (var r in bills.OrderBy(r => r.NextDueDate))
+            {
+                var overdue = r.NextDueDate.Date < DateTime.Today;
+                nav.Alerts.Add(new NavAlert
+                {
+                    Level = overdue ? "danger" : "info",
+                    Controller = "RecurringTransactions",
+                    Title = overdue ? $"{r.Label} is overdue" : $"{r.Label} is due soon",
+                    Detail = $"{Format.Money0(r.Amount, user.Currency)} · due {Format.Date(r.NextDueDate)}"
+                });
+            }
         }
         catch
         {

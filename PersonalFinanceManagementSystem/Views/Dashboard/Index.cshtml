@@ -325,6 +325,41 @@
         <section class="panel">
             <header class="panel-head">
                 <div>
+                    <h2 class="panel-title">Upcoming bills</h2>
+                    <p class="panel-sub">Next 14 days</p>
+                </div>
+                <a class="link-action" asp-controller="RecurringTransactions" asp-action="Index">Manage</a>
+            </header>
+
+            @if (Model.UpcomingBills.Count == 0)
+            {
+                <div class="empty-state empty-sm">
+                    <p>Nothing due in the next 14 days.</p>
+                    <a class="btn btn-fin btn-sm" asp-controller="RecurringTransactions" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add recurring</a>
+                </div>
+            }
+            else
+            {
+                <ul class="meter-list">
+                    @foreach (var bill in Model.UpcomingBills)
+                    {
+                        <li>
+                            <div class="meter-row">
+                                <span class="meter-name"><span class="dot" style="background:@Format.CategoryColor(bill.Item.Label)"></span>@bill.Item.Label</span>
+                                <span class="meter-value">@(bill.Item.Type == RecurringTransactionType.Income ? "+" : "-")@Format.Money0(bill.Item.Amount, cur)</span>
+                            </div>
+                            <div class="meter-note">
+                                <span class="chip @bill.StatusClass">@bill.CountdownLabel</span>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="panel">
+            <header class="panel-head">
+                <div>
                     <h2 class="panel-title">Savings goals</h2>
                     <p class="panel-sub">@Model.Goals.Count(g => g.Completed) of @Model.Goals.Count completed</p>
                 </div>

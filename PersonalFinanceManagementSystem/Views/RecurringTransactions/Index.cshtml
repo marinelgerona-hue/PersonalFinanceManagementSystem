@@ -1,0 +1,150 @@
+@model RecurringTransactionListViewModel
+@{
+    var cur = Model.Currency;
+    var pager = Model.Page.ToPager(Model.Query, "recurring transactions");
+}
+
+<section class="kpi-grid mb-3">
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-repeat"/></svg></span>
+            <span class="kpi-label">Active</span>
+        </div>
+        <div class="kpi-value">@Model.ActiveCount</div>
+        <div class="kpi-foot">recurring transaction@(Model.ActiveCount == 1 ? "" : "s")</div>
+    </article>
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-clock"/></svg></span>
+            <span class="kpi-label">Due within 7 days</span>
+        </div>
+        <div class="kpi-value">@Model.DueSoonCount</div>
+        <div class="kpi-foot">upcoming</div>
+    </article>
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-red"><svg class="ico"><use href="#i-alert"/></svg></span>
+            <span class="kpi-label">Overdue</span>
+        </div>
+        <div class="kpi-value">@Model.OverdueCount</div>
+        <div class="kpi-foot">should have generated already</div>
+    </article>
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
+            <span class="kpi-label">Monthly total</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.MonthlyTotal, cur)</div>
+        <div class="kpi-foot">sum of active monthly items</div>
+    </article>
+</section>
+
+<div class="card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Recurring Transactions</h2>
+            <div class="card-sub">@Model.Page.TotalCount record@(Model.Page.TotalCount == 1 ? "" : "s")@(Model.Query.Search.Length > 0 ? $" matching “{Model.Query.Search}”" : "") · due occurrences generate automatically</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-soft" asp-action="Export"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+            <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Recurring</a>
+        </div>
+    </div>
+
+    <div class="list-toolbar">
+        @{ ViewData["SearchPlaceholder"] = "Search label or note…"; }
+        <partial name="_ListToolbar" model="Model.Query" />
+    </div>
+
+    <div class="table-responsive">
+        @{ var returnUrl = Context.Request.Path + Context.Request.QueryString; }
+        @if (Model.Page.TotalCount == 0 && Model.Query.Search.Length > 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-search"/></svg>
+                <p>No recurring transactions match “@Model.Query.Search”.</p>
+                <a class="btn btn-soft btn-sm" href="@Context.Request.WithQuery(("q", null), ("page", null))">Clear search</a>
+            </div>
+        }
+        else if (Model.Page.TotalCount == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-repeat"/></svg>
+                <p>No recurring transactions yet. Add a bill or paycheck that repeats on a schedule.</p>
+            </div>
+        }
+        else
+        {
+            <table class="fin-table fin-table-fixed">
+                <thead>
+                    <tr>
+                        @Html.SortHeader(Model.Query, "type", "Type", "asc", "col-chip-sm")
+                        @Html.SortHeader(Model.Query, "label", "Label", "asc")
+                        @Html.SortHeader(Model.Query, "frequency", "Frequency", "asc", "col-chip-sm")
+                        @Html.SortHeader(Model.Query, "nextduedate", "Next due", "asc", "col-date")
+                        @Html.SortHeader(Model.Query, "status", "Status", "asc", "col-chip")
+                        @Html.SortHeader(Model.Query, "amount", "Amount", "desc", "text-end col-amount")
+                        <th class="text-end col-actions-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Page.Items)
+                    {
+                        var overdue = item.IsActive && item.NextDueDate.Date < DateTime.Today;
+                        var dueSoon = item.IsActive && !overdue && item.NextDueDate.Date <= DateTime.Today.AddDays(7);
+                        <tr>
+                            <td>
+                                <span class="chip @(item.Type == RecurringTransactionType.Income ? "chip-success" : "chip-muted")">@item.Type</span>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="cell-stack">
+                                    <span><span class="dot" style="background:@Format.CategoryColor(item.Label)"></span>@item.Label</span>
+                                    @if (!string.IsNullOrWhiteSpace(item.Note))
+                                    {
+                                        <span class="cell-sub">@item.Note</span>
+                                    }
+                                </a>
+                            </td>
+                            <td class="text-muted">@item.Frequency</td>
+                            <td class="text-nowrap text-muted">@Format.Date(item.NextDueDate)</td>
+                            <td>
+                                @if (!item.IsActive)
+                                {
+                                    <span class="chip chip-muted">Paused</span>
+                                }
+                                else if (overdue)
+                                {
+                                    <span class="chip chip-danger">Overdue</span>
+                                }
+                                else if (dueSoon)
+                                {
+                                    <span class="chip chip-warn">Due soon</span>
+                                }
+                                else
+                                {
+                                    <span class="chip chip-info">Active</span>
+                                }
+                            </td>
+                            <td class="text-end amount @(item.Type == RecurringTransactionType.Income ? "" : "neg")">@(item.Type == RecurringTransactionType.Income ? "+" : "-")@Format.Money(item.Amount, cur)</td>
+                            <td class="text-end text-nowrap">
+                                <form class="d-inline" asp-action="Skip" asp-route-id="@item.Id" method="post">
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <button type="submit" class="btn-icon" title="Skip next occurrence"><svg class="ico-sm"><use href="#i-chevron-right"/></svg></button>
+                                </form>
+                                <a class="btn-icon" asp-action="Edit" asp-route-id="@item.Id" title="Edit"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                                <form class="d-inline" asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Delete this recurring transaction? Records it already generated are kept.');">
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <button type="submit" class="btn-icon danger" title="Delete"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    @if (Model.Page.TotalCount > 0)
+    {
+        <partial name="_Pagination" model="pager" />
+    }
+</div>
