@@ -3,58 +3,94 @@
     ViewData["Title"] = "Create account";
 }
 
-<div class="auth-card">
-    <div class="auth-brand">
-        <span class="brand-logo"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h4"/></svg></span>
-        <span>Finance <span class="text-brand">Management</span></span>
-    </div>
-    <h1 class="auth-title">Create your account</h1>
-    <p class="auth-sub">Start tracking income, expenses, budgets and goals in minutes.</p>
+<div class="auth-shell">
+    <partial name="_AuthAside" />
 
-    <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+    <section class="auth-panel">
+        <div class="auth-brand auth-brand-mobile">
+            <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet"/></svg></span>
+            <span>Finance <span class="text-brand">Management</span></span>
+        </div>
+        <h1 class="auth-title">Create your account</h1>
+        <p class="auth-sub">It's free and takes less than a minute.</p>
 
-    <form asp-action="Register" method="post" novalidate>
-        <div class="mb-3">
-            <label asp-for="FullName" class="form-label"></label>
-            <input asp-for="FullName" class="form-control" placeholder="Marinel Gerona" autocomplete="name" />
-            <span asp-validation-for="FullName" class="text-danger small"></span>
-        </div>
-        <div class="row">
-            <div class="col-md-7 mb-3">
-                <label asp-for="Email" class="form-label"></label>
-                <input asp-for="Email" class="form-control" placeholder="you@example.com" autocomplete="email" />
-                <span asp-validation-for="Email" class="text-danger small"></span>
-            </div>
-            <div class="col-md-5 mb-3">
-                <label asp-for="Phone" class="form-label">Phone <span class="text-muted fw-normal">(optional)</span></label>
-                <input asp-for="Phone" class="form-control" placeholder="+09535733103" autocomplete="tel" />
-                <span asp-validation-for="Phone" class="text-danger small"></span>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label asp-for="Currency" class="form-label"></label>
-            <select asp-for="Currency" class="form-select">
-                @foreach (var (code, name) in Catalog.Currencies)
-                {
-                    <option value="@code" selected="@(code == Model.Currency)">@name</option>
-                }
-            </select>
-            <span asp-validation-for="Currency" class="text-danger small"></span>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label asp-for="Password" class="form-label"></label>
-                <input asp-for="Password" class="form-control" placeholder="At least 6 characters" autocomplete="new-password" />
-                <span asp-validation-for="Password" class="text-danger small"></span>
-            </div>
-            <div class="col-md-6 mb-4">
-                <label asp-for="ConfirmPassword" class="form-label"></label>
-                <input asp-for="ConfirmPassword" class="form-control" placeholder="Repeat password" autocomplete="new-password" />
-                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-fin w-100 btn-lg">Create account</button>
-    </form>
+        <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
 
-    <p class="auth-alt">Already have an account? <a asp-action="Login">Sign in</a></p>
+        <form asp-action="Register" method="post" novalidate class="auth-form">
+            <div class="auth-grid">
+                <div class="field">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-user"/></svg>
+                        <input asp-for="FullName" class="form-control" placeholder="Your name" autocomplete="name" />
+                    </div>
+                    <span asp-validation-for="FullName" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Email" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-mail"/></svg>
+                        <input asp-for="Email" class="form-control" placeholder="name@company.com" autocomplete="email" />
+                    </div>
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Phone" class="form-label">Phone <span class="label-optional">Optional</span></label>
+                    <div class="phone-control">
+                        <select asp-for="PhoneCountry" class="phone-country" aria-label="Country code" autocomplete="tel-country-code">
+                            @foreach (var (iso, name, dial, flag) in Catalog.PhoneCountries)
+                            {
+                                <option value="@iso" data-flag="@flag" data-dial="@dial" data-name="@name" selected="@(iso == Model.PhoneCountry)">@flag @name (@dial)</option>
+                            }
+                        </select>
+                        <input asp-for="Phone" class="form-control" placeholder="Mobile number" autocomplete="tel-national" inputmode="tel" />
+                    </div>
+                    <span asp-validation-for="Phone" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Currency" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-dollar"/></svg>
+                        <select asp-for="Currency" class="form-select">
+                            @foreach (var (code, name) in Catalog.Currencies)
+                            {
+                                <option value="@code" selected="@(code == Model.Currency)">@name</option>
+                            }
+                        </select>
+                    </div>
+                    <span asp-validation-for="Currency" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Password" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+                        <input asp-for="Password" class="form-control" placeholder="Create password" autocomplete="new-password" data-strength-meter="pw-strength" />
+                    </div>
+                    <span asp-validation-for="Password" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="ConfirmPassword" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-lock-check"/></svg>
+                        <input asp-for="ConfirmPassword" class="form-control" placeholder="Repeat password" autocomplete="new-password" />
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="field-error"></span>
+                </div>
+            </div>
+
+            <div class="pw-strength" id="pw-strength" aria-live="polite">
+                <div class="pw-bars"><span></span><span></span><span></span><span></span></div>
+                <span class="pw-label">Use at least 6 characters with a mix of letters, numbers &amp; symbols.</span>
+            </div>
+
+            <button type="submit" class="btn btn-fin auth-submit w-100">Create account</button>
+        </form>
+
+        <p class="auth-alt">Already have an account? <a asp-action="Login">Sign in</a></p>
+    </section>
 </div>

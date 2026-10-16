@@ -4,316 +4,77 @@
     ViewData["Title"] = "Sign in";
 }
 
-<div class="auth-card">
+<div class="auth-shell">
+    <partial name="_AuthAside" />
 
-    <div class="auth-brand">
-        <span class="brand-logo">
-            <svg width="20"
-                 height="20"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="2"
-                 stroke-linecap="round"
-                 stroke-linejoin="round"
-                 viewBox="0 0 24 24">
-
-                <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-
-                <path d="M16 12h4" />
-
-            </svg>
-        </span>
-
-        <span>
-            Finance <span class="text-brand">Management</span>
-        </span>
-    </div>
-
-
-    <h1 class="auth-title">
-        Welcome back
-    </h1>
-
-    <p class="auth-sub">
-        Sign in to your Finance Management account to manage your money.
-    </p>
-
-
-    <!-- Validation errors -->
-    <div asp-validation-summary="ModelOnly"
-         class="banner banner-error">
-    </div>
-
-
-    <!-- Login Form -->
-    <form asp-action="Login"
-          method="post"
-          novalidate>
-
-        <div class="mb-3">
-
-            <label asp-for="Email"
-                   class="form-label">
-            </label>
-
-            <input asp-for="Email"
-                   class="form-control"
-                   placeholder="you@example.com"
-                   autocomplete="email" />
-
-            <span asp-validation-for="Email"
-                  class="text-danger small">
-            </span>
-
+    <section class="auth-panel">
+        <div class="auth-brand auth-brand-mobile">
+            <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet"/></svg></span>
+            <span>Finance <span class="text-brand">Management</span></span>
         </div>
 
+        <h1 class="auth-title">Sign in to your account</h1>
+        <p class="auth-sub">Enter your email and password to continue.</p>
 
-        <div class="mb-3">
-
-            <label asp-for="Password"
-                   class="form-label">
-            </label>
-
-            <input asp-for="Password"
-                   class="form-control"
-                   placeholder="••••••••"
-                   autocomplete="current-password" />
-
-            <span asp-validation-for="Password"
-                  class="text-danger small">
-            </span>
-
+        <!-- Validation errors -->
+        <div asp-validation-summary="ModelOnly"
+             class="banner banner-error">
         </div>
 
+        <!-- Login Form -->
+        <form asp-action="Login"
+              method="post"
+              novalidate
+              class="auth-form">
 
-        <!-- Remember me: persistent sign-in across browser restarts -->
-        <div class="mb-4">
-
-            <div class="form-check">
-
-                <input asp-for="RememberMe"
-                       type="checkbox"
-                       class="form-check-input"
-                       value="true" />
-
-                <label asp-for="RememberMe"
-                       class="form-check-label">
-
-                    Remember me
-
-                </label>
-
+            <div class="field">
+                <label asp-for="Email" class="form-label"></label>
+                <div class="field-control">
+                    <svg class="field-icon" aria-hidden="true"><use href="#i-mail"/></svg>
+                    <input asp-for="Email"
+                           class="form-control"
+                           placeholder="name@company.com"
+                           autocomplete="email" />
+                </div>
+                <span asp-validation-for="Email" class="field-error"></span>
             </div>
 
-        </div>
-
-
-        <button type="submit"
-                class="btn btn-fin w-100 btn-lg">
-
-            Sign in
-
-        </button>
-
-    </form>
-
-
-    <p class="auth-alt">
-
-        New to Finance Management?
-
-        <a asp-action="Register">
-            Create an account
-        </a>
-
-    </p>
-
-</div>
-
-
-<!-- ============================================================
-     SUCCESS POPUP
-     This appears after successful account registration.
-     ============================================================ -->
-@if (TempData["Success"] != null)
-{
-    <div id="successPopup"
-         class="success-popup-overlay">
-
-        <div class="success-popup">
-
-            <div class="success-icon">
-                ✓
+            <div class="field">
+                <label asp-for="Password" class="form-label"></label>
+                <div class="field-control">
+                    <svg class="field-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+                    <input asp-for="Password"
+                           class="form-control"
+                           placeholder="Enter your password"
+                           autocomplete="current-password" />
+                </div>
+                <span asp-validation-for="Password" class="field-error"></span>
             </div>
 
-            <h3>
-                Success!
-            </h3>
+            <!-- Remember me: persistent sign-in across browser restarts -->
+            <div class="field field-inline">
+                <div class="form-check">
+                    <input asp-for="RememberMe"
+                           type="checkbox"
+                           class="form-check-input"
+                           value="true" />
+                    <label asp-for="RememberMe"
+                           class="form-check-label">
+                        Keep me signed in for 30 days
+                    </label>
+                </div>
+            </div>
 
-            <p>
-                @TempData["Success"]
-            </p>
-
-            <button type="button"
-                    class="btn btn-fin"
-                    onclick="closeSuccessPopup()">
-
-                Continue
-
+            <button type="submit"
+                    class="btn btn-fin auth-submit w-100">
+                Sign in
             </button>
 
-        </div>
+        </form>
 
-    </div>
-}
-
-
-<!-- ============================================================
-     POPUP STYLE
-     ============================================================ -->
-
-<style>
-
-    .success-popup-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-
-        background: rgba(0, 0, 0, 0.45);
-
-        display: flex;
-        justify-content: center;
-        align-items: center;
-
-        z-index: 9999;
-    }
-
-
-    .success-popup {
-        width: 380px;
-        max-width: 90%;
-
-        background: #ffffff;
-
-        border-radius: 16px;
-
-        padding: 32px;
-
-        text-align: center;
-
-        box-shadow:
-            0 15px 40px rgba(0, 0, 0, 0.20);
-
-        animation: popupShow 0.25s ease-out;
-    }
-
-
-    .success-icon {
-        width: 65px;
-        height: 65px;
-
-        margin: 0 auto 15px;
-
-        border-radius: 50%;
-
-        background: #198754;
-
-        color: white;
-
-        font-size: 38px;
-        font-weight: bold;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-
-    .success-popup h3 {
-        margin-bottom: 10px;
-
-        font-weight: 700;
-    }
-
-
-    .success-popup p {
-        color: #666;
-
-        margin-bottom: 22px;
-    }
-
-
-    @@keyframes popupShow {
-
-        from {
-            opacity: 0;
-            transform: scale(0.85);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-    }
-
-</style>
-
-
-<!-- ============================================================
-     POPUP JAVASCRIPT
-     ============================================================ -->
-
-<script>
-
-    function closeSuccessPopup() {
-
-        const popup =
-            document.getElementById("successPopup");
-
-        if (popup) {
-            popup.remove();
-        }
-
-    }
-
-</script>
-
-<!-- ============================================================
-     REMEMBER ME STYLE
-     Green checkbox accent to match the theme; stays on the left.
-     ============================================================ -->
-
-<style>
-
-    .form-check-input[type="checkbox"] {
-        width: 1.05em;
-        height: 1.05em;
-
-        margin-left: 0;
-        margin-right: .5em;
-
-        border-color: #dbe3ec;
-
-        accent-color: var(--brand, #10b981);
-
-        cursor: pointer;
-    }
-
-    .form-check-input:checked[type="checkbox"] {
-        background-color: var(--brand, #10b981);
-
-        border-color: var(--brand, #10b981);
-    }
-
-    .form-check-label {
-        color: var(--ink-2, #334155);
-
-        font-size: .92rem;
-
-        cursor: pointer;
-    }
-
-</style>
+        <p class="auth-alt">
+            New to Finance Management?
+            <a asp-action="Register">Create an account</a>
+        </p>
+    </section>
+</div>

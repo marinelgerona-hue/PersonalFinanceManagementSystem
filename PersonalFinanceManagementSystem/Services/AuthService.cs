@@ -105,8 +105,7 @@ public class AuthService : IAuthService
                 email,
 
             Phone =
-                model.Phone?.Trim()
-                ?? string.Empty,
+                model.FullPhone,
 
             Currency =
                 model.Currency,

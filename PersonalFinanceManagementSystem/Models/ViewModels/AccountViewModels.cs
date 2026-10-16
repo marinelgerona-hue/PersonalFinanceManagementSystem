@@ -27,11 +27,19 @@ public class RegisterViewModel
     [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
-    [StringLength(80, MinimumLength = 6,
-        ErrorMessage = "Phone number must be exactly 11 digits.")]
+    /// <summary>ISO code of the country picked for the phone number (e.g. "US").</summary>
+    [Display(Name = "Country code")]
+    public string PhoneCountry { get; set; } = "US";
+
+    /// <summary>The national part of the number, without the country dial code.</summary>
+    [RegularExpression(@"^\s*(?:\d[\s\-().]*){4,14}$",
+        ErrorMessage = "Enter 4–14 digits, without the country code.")]
     [DataType(DataType.PhoneNumber)]
     [Display(Name = "Phone (optional)")]
     public string? Phone { get; set; }
+
+    /// <summary>Dial code + national digits (e.g. "+91 9876543210"), or empty when no number was entered.</summary>
+    public string FullPhone => Catalog.ComposePhone(PhoneCountry, Phone);
 
     [Required]
     public string Currency { get; set; } = "USD";
