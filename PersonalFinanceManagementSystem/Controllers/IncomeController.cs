@@ -13,7 +13,17 @@ public class IncomeController : AppControllerBase
     public IncomeController(IAuthService auth, IIncomeService incomes) : base(auth)
         => _incomes = incomes;
 
-    public IActionResult Index(IncomePeriod? period)
+    /// <summary>Sortable columns of the income table.</summary>
+    private static readonly Dictionary<string, Func<Income, object?>> IncomeSorts = new()
+    {
+        ["date"] = i => i.Date,
+        ["source"] = i => i.Source,
+        ["period"] = i => i.Period,
+        ["note"] = i => i.Note,
+        ["amount"] = i => i.Amount
+    };
+
+    public IActionResult Index(IncomePeriod? period, ListQuery query)
     {
         var now = DateTime.Now;
         var all = _incomes.GetAll(CurrentUser.Id);
@@ -23,9 +33,12 @@ public class IncomeController : AppControllerBase
             ? all
             : all.Where(i => i.Period == period).ToList();
 
+        query.Normalize(IncomeSorts.Keys, defaultSort: "date");
         var vm = new IncomeListViewModel
         {
-            Items = filtered,
+            Query = query,
+            Page = filtered.ToPaged(query, IncomeSorts,
+                (i, term) => ListQueryExtensions.AnyContains(term, i.Source, i.Note, i.Period.ToString())),
             Currency = CurrentUser.Currency,
 
             // All-time income: the total of all unique records, counted once.

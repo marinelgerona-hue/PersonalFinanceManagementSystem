@@ -6,10 +6,9 @@
 <div class="form-card card-fin">
     <div class="card-head">
         <div>
-            <h2 class="card-title">@(isEdit ? "Edit Income" : "Add Income")</h2>
+            <h2 class="card-title">Income details</h2>
             <div class="card-sub">Source, amount, date and an optional note</div>
         </div>
-        <a class="btn btn-soft btn-sm" asp-action="Index">Cancel</a>
     </div>
 
     <div class="card-body-fin">
@@ -18,7 +17,7 @@
         <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" novalidate>
             <input type="hidden" asp-for="Id" />
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Source" class="form-label">Income source</label>
                     <select asp-for="Source" class="form-select">
                         <option value="">Choose a source…</option>
@@ -39,7 +38,7 @@
                         <span asp-validation-for="CustomSource" class="text-danger small"></span>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Period" class="form-label">Income period</label>
                     <select asp-for="Period" class="form-select">
                         <option value="@IncomePeriod.Daily" selected="@(Model.Period == IncomePeriod.Daily)">Daily</option>
@@ -49,7 +48,7 @@
                     </select>
                     <span asp-validation-for="Period" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Amount" class="form-label">Amount</label>
                     <div class="input-group">
                         <span class="input-group-text">@Format.Symbol(ViewBag.User?.Currency)</span>
@@ -57,20 +56,20 @@
                     </div>
                     <span asp-validation-for="Amount" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Date" class="form-label">Date</label>
                     <input asp-for="Date" type="date" class="form-control" />
                     <span asp-validation-for="Date" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-4">
                     <label asp-for="Note" class="form-label">Note <span class="text-muted fw-normal">(optional)</span></label>
                     <input asp-for="Note" class="form-control" placeholder="e.g. October salary" />
                     <span asp-validation-for="Note" class="text-danger small"></span>
                 </div>
             </div>
-            <div class="d-flex gap-2 mt-4">
+            <div class="form-actions">
+                <a class="btn btn-soft" asp-action="Index">Cancel</a>
                 <button type="submit" class="btn btn-fin">@(isEdit ? "Save changes" : "Add income")</button>
-                <a class="btn btn-soft" asp-action="Index">Back to list</a>
             </div>
         </form>
     </div>

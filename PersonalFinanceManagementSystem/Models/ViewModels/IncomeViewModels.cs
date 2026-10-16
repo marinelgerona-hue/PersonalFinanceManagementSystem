@@ -34,7 +34,9 @@ public class IncomeFormViewModel
 
 public class IncomeListViewModel
 {
-    public List<Income> Items { get; set; } = new();
+    /// <summary>The current page of the (filtered, searched, sorted) income table.</summary>
+    public PagedList<Income> Page { get; set; } = new();
+    public ListQuery Query { get; set; } = new();
     public string Currency { get; set; } = "USD";
     public decimal MonthTotal { get; set; }
     public decimal Total { get; set; }
