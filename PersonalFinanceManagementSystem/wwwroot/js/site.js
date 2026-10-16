@@ -31,6 +31,78 @@
     });
 })();
 
+// Generic file dropzone: supports drag & drop in addition to the click-to-browse file
+// input, for any [data-dropzone] element (profile picture, CSV/Excel import, …). Dropping
+// a file sets it on the input and fires a real "change" event, so each page's own
+// change handler decides what happens next (auto-submit, show a chosen-file preview, etc.)
+// instead of this generic wiring assuming one behavior for every dropzone.
+(function () {
+    document.querySelectorAll('[data-dropzone]').forEach(function (zone) {
+        var input = zone.querySelector('input[type="file"]');
+        if (!input) return;
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'dragend'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.remove('is-dragover');
+            });
+        });
+
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('is-dragover');
+            var files = e.dataTransfer && e.dataTransfer.files;
+            if (files && files.length) {
+                input.files = files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+})();
+
+// Import page: shows the chosen file (name + size) below the dropzone instead of
+// auto-submitting, and lets the user clear the selection before previewing.
+(function () {
+    var input = document.getElementById('importFile');
+    if (!input) return;
+
+    var chosen = document.getElementById('importFileChosen');
+    var nameEl = document.getElementById('importFileName');
+    var sizeEl = document.getElementById('importFileSize');
+    var removeBtn = document.getElementById('importFileRemove');
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file) { chosen.hidden = true; return; }
+        nameEl.textContent = file.name;
+        sizeEl.textContent = formatSize(file.size);
+        chosen.hidden = false;
+    });
+
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function () {
+            input.value = '';
+            chosen.hidden = true;
+        });
+    }
+})();
+
 // Searchable country-code picker: replaces a <select class="phone-country"> (kept hidden for form posting).
 (function () {
     var chevron = '<svg class="cc-chevron" aria-hidden="true"><use href="#i-chevron-down"/></svg>';
