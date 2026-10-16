@@ -1,0 +1,30 @@
+@* Primary navigation — rendered in the desktop sidebar and in the mobile drawer. *@
+@{
+    var active = (ViewData["ActiveNav"] as string) ?? "";
+    var navState = ViewBag.Nav as NavState;
+    var items = new (string Key, string Controller, string Text, string Icon, int Badge)[]
+    {
+        ("dashboard", "Dashboard", "Dashboard", "i-dashboard", 0),
+        ("income", "Income", "Income", "i-income", 0),
+        ("expenses", "Expenses", "Expenses", "i-expense", 0),
+        ("budgets", "Budgets", "Budgets", "i-budget", navState?.BudgetsOver ?? 0),
+        ("goals", "Goals", "Savings goals", "i-goal", 0),
+        ("reports", "Reports", "Reports", "i-report", 0),
+        ("settings", "Settings", "Settings", "i-settings", 0)
+    };
+}
+<nav class="nav-fin" aria-label="Main">
+    @foreach (var (key, controller, text, icon, badge) in items)
+    {
+        var isActive = active == key;
+        <a class="nav-link-fin @(isActive ? "active" : "")" asp-controller="@controller" asp-action="Index"
+           data-tip="@text" aria-current="@(isActive ? "page" : null)">
+            <svg class="ico"><use href="#@icon"/></svg>
+            <span class="nav-text">@text</span>
+            @if (badge > 0)
+            {
+                <span class="nav-badge" title="@badge over budget">@badge</span>
+            }
+        </a>
+    }
+</nav>
