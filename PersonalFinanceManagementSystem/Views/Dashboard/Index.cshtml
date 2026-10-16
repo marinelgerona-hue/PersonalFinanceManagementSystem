@@ -1,307 +1,378 @@
 @model DashboardViewModel
+@functions {
+    // "Nice" axis step (1, 2, 2.5, 5 × 10^n) so gridlines land on round numbers.
+    static decimal NiceStep(decimal raw)
+    {
+        if (raw <= 0) return 1;
+        var exp = Math.Floor(Math.Log10((double)raw));
+        var pow = (decimal)Math.Pow(10, exp);
+        var f = raw / pow;
+        var nf = f <= 1 ? 1m : f <= 2 ? 2m : f <= 2.5m ? 2.5m : f <= 5 ? 5m : 10m;
+        return nf * pow;
+    }
+
+    static string Compact(decimal v, string cur)
+        => v >= 1000 ? Format.Symbol(cur) + (v / 1000).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "k"
+                     : Format.Money0(v, cur);
+}
 @{
     var cur = Model.Currency;
-    var donutR = 48d;
-    var donutC = 2 * Math.PI * donutR;
+    var prevLabel = Model.PreviousMonth?.Label ?? "last month";
 }
 
-<div class="row g-3">
-    @* ------------------------------------------------ stat cards *@
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="stat-label">Total Balance</div>
-                    <div class="stat-value">@Format.Money(Model.Balance, cur)</div>
-                    <div class="stat-foot">@Format.Money(Model.TotalIncome, cur) in − @Format.Money(Model.TotalExpenses, cur) out</div>
-                </div>
-                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
-            </div>
+@* ================================================================ KPI row *@
+<section class="kpi-grid">
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            <span class="kpi-label">Total balance</span>
         </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="stat-label">Income · @Model.MonthLabel</div>
-                    <div class="stat-value text-pos">@Format.Money(Model.MonthlyIncome, cur)</div>
-                    <div class="stat-foot">received this month</div>
-                </div>
-                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
-            </div>
+        <div class="kpi-value">@Format.Money(Model.Balance, cur)</div>
+        <div class="kpi-foot">
+            <span class="delta @(Model.MonthlyNet >= 0 ? "delta-up" : "delta-down")">@(Model.MonthlyNet >= 0 ? "+" : "−")@Format.Money0(Math.Abs(Model.MonthlyNet), cur)</span>
+            <span>net this month</span>
         </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="stat-label">Expenses · @Model.MonthLabel</div>
-                    <div class="stat-value text-neg">@Format.Money(Model.MonthlyExpenses, cur)</div>
-                    <div class="stat-foot">spent this month</div>
-                </div>
-                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
-            </div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            <span class="kpi-label">Income</span>
+            <span class="kpi-period">@Format.MonthShort(Model.Month)</span>
         </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
+        <div class="kpi-value">@Format.Money(Model.MonthlyIncome, cur)</div>
+        <div class="kpi-foot">
+            @if (Model.IncomeChange is decimal ic)
+            {
+                <span class="delta @(ic >= 0 ? "delta-up" : "delta-down")">@(ic >= 0 ? "▲" : "▼") @Format.Pct(Math.Abs(ic))%</span>
+                <span>vs @prevLabel</span>
+            }
+            else
+            {
+                <span>No income recorded in @prevLabel</span>
+            }
+        </div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <span class="kpi-label">Expenses</span>
+            <span class="kpi-period">@Format.MonthShort(Model.Month)</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.MonthlyExpenses, cur)</div>
+        <div class="kpi-foot">
+            @if (Model.ExpenseChange is decimal ec)
+            {
+                @* Spending more is bad news, so an increase is shown in red. *@
+                <span class="delta @(ec <= 0 ? "delta-up" : "delta-down")">@(ec >= 0 ? "▲" : "▼") @Format.Pct(Math.Abs(ec))%</span>
+                <span>vs @prevLabel</span>
+            }
+            else
+            {
+                <span>No expenses recorded in @prevLabel</span>
+            }
+        </div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            <span class="kpi-label">Savings goals</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.TotalSaved, cur)</div>
+        <div class="kpi-progress" role="progressbar" aria-valuenow="@Format.Pct(Model.SavingsPercent)" aria-valuemin="0" aria-valuemax="100">
+            <span style="width:@Format.Pct(Math.Min(Model.SavingsPercent, 100))%"></span>
+        </div>
+        <div class="kpi-foot">
+            <span><strong>@Format.Pct(Model.SavingsPercent)%</strong> of @Format.Money0(Model.SavingsTarget, cur) target</span>
+        </div>
+    </article>
+</section>
+
+<div class="dash-grid">
+    @* ================================================================ Cash flow *@
+    <section class="panel span-8">
+        <header class="panel-head">
             <div>
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-label">Savings Progress</div>
-                        <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
-                        <div class="stat-foot">of @Format.Money(Model.SavingsTarget, cur) goal target</div>
-                    </div>
-                    <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
-                </div>
-                <div class="progress-track mt-2">
-                    <div class="progress-fill" style="width:@Format.Pct(Math.Min(Model.SavingsPercent, 100))%"></div>
-                </div>
-                <div class="stat-foot mt-1">@Format.Pct(Model.SavingsPercent)% saved</div>
+                <h2 class="panel-title">Cash flow</h2>
+                <p class="panel-sub">Income and expenses over the last @Model.Trend.Count months</p>
             </div>
-        </div>
-    </div>
-</div>
+            <div class="chart-legend">
+                <span><i style="background:#10b981"></i>Income</span>
+                <span><i style="background:#f43f5e"></i>Expenses</span>
+            </div>
+        </header>
 
-<div class="row g-3 mt-0">
-    @* ------------------------------------------------ spending overview (donut) *@
-    <div class="col-lg-5">
-        <div class="card-fin h-100">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Spending Overview</h2>
-                    <div class="card-sub">@Model.MonthLabel · by category</div>
-                </div>
-                <a class="btn btn-soft btn-sm" asp-controller="Expenses" asp-action="Index">View all</a>
+        @if (Model.TrendMax <= 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-report"/></svg>
+                <p>Add income and expenses to see your monthly cash flow here.</p>
             </div>
-            <div class="card-body-fin">
-                @if (Model.Spending.Count == 0)
-                {
-                    <div class="empty-state">
-                        <svg class="ico ico-lg text-muted"><use href="#i-budget"/></svg>
-                        <p>No expenses recorded for @Model.MonthLabel yet.</p>
-                        <a class="btn btn-fin btn-sm" asp-controller="Expenses" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add expense</a>
-                    </div>
-                }
-                else
-                {
-                    var total = Model.SpendingTotal;
-                    var offset = 0d;
-                    <div class="d-flex flex-column flex-sm-row align-items-center gap-4">
-                        <div class="donut-wrap">
-                            <svg viewBox="0 0 120 120" class="donut">
-                                <circle cx="60" cy="60" r="48" fill="none" stroke="#eef2f7" stroke-width="18"/>
-                                @foreach (var s in Model.Spending)
-                                {
-                                    var len = (double)(s.Amount / total) * donutC;
-                                    <circle cx="60" cy="60" r="48" fill="none" stroke="@Format.CategoryColor(s.Category)" stroke-width="18"
-                                            stroke-dasharray="@Format.Num(len) @Format.Num(donutC - len)"
-                                            stroke-dashoffset="@Format.Num(-offset)"/>
-                                    offset += len;
-                                }
-                                <text x="60" y="56" text-anchor="middle" class="donut-value">@Format.Money0(total, cur)</text>
-                                <text x="60" y="72" text-anchor="middle" class="donut-caption">this month</text>
-                            </svg>
-                        </div>
-                        <ul class="legend list-unstyled flex-grow-1 w-100">
-                            @foreach (var s in Model.Spending)
-                            {
-                                <li class="legend-row">
-                                    <span class="dot" style="background:@Format.CategoryColor(s.Category)"></span>
-                                    <span class="legend-name">@s.Category</span>
-                                    <span class="legend-amount">@Format.Money(s.Amount, cur)</span>
-                                    <span class="legend-pct">@Format.Pct(s.Percent)%</span>
-                                </li>
-                            }
-                        </ul>
-                    </div>
-                }
+        }
+        else
+        {
+            var net6 = Model.TrendIncomeTotal - Model.TrendExpenseTotal;
+            <div class="flow-summary">
+                <div><span class="flow-label">Total income</span><span class="flow-value">@Format.Money0(Model.TrendIncomeTotal, cur)</span></div>
+                <div><span class="flow-label">Total expenses</span><span class="flow-value">@Format.Money0(Model.TrendExpenseTotal, cur)</span></div>
+                <div><span class="flow-label">Net saved</span><span class="flow-value @(net6 >= 0 ? "text-pos" : "text-neg")">@(net6 < 0 ? "−" : "")@Format.Money0(Math.Abs(net6), cur)</span></div>
+                <div><span class="flow-label">Savings rate · @Format.MonthShort(Model.Month)</span><span class="flow-value">@Format.Pct(Model.SavingsRate)%</span></div>
             </div>
-        </div>
-    </div>
 
-    @* ------------------------------------------------ income vs expenses (6 months) *@
-    <div class="col-lg-7">
-        <div class="card-fin h-100">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Income vs Expenses</h2>
-                    <div class="card-sub">last 6 months</div>
+            var step = NiceStep(Model.TrendMax / 4);
+            var top = Math.Ceiling(Model.TrendMax / step) * step;
+            var ticks = new List<decimal>();
+            for (var v = 0m; v <= top; v += step) ticks.Add(v);
+
+            @* HTML/CSS chart: bars stretch with the panel while labels stay a fixed, readable size. *@
+            <div class="flow-plot" role="img" aria-label="Income and expenses by month">
+                <div class="flow-y" aria-hidden="true">
+                    @foreach (var v in ticks)
+                    {
+                        <span style="bottom:@Format.Pct(v / top * 100)%">@Compact(v, cur)</span>
+                    }
                 </div>
-                <div class="chart-key">
-                    <span><i class="key key-income"></i> Income</span>
-                    <span><i class="key key-expense"></i> Expenses</span>
-                </div>
-            </div>
-            <div class="card-body-fin">
-                @if (Model.TrendMax <= 0)
-                {
-                    <div class="empty-state">
-                        <svg class="ico ico-lg text-muted"><use href="#i-report"/></svg>
-                        <p>Add income and expenses to see your monthly trend here.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="bar-chart">
-                        @foreach (var t in Model.Trend)
+                <div class="flow-area">
+                    @foreach (var v in ticks)
+                    {
+                        <i class="flow-line @(v == 0 ? "is-base" : "")" style="bottom:@Format.Pct(v / top * 100)%"></i>
+                    }
+                    <div class="flow-cols">
+                        @for (var i = 0; i < Model.Trend.Count; i++)
                         {
-                            var ih = Model.TrendMax > 0 ? (double)(t.Income / Model.TrendMax) * 100 : 0;
-                            var eh = Model.TrendMax > 0 ? (double)(t.Expenses / Model.TrendMax) * 100 : 0;
-                            <div class="bar-group" title="@t.Label: income @Format.Money(t.Income, cur), expenses @Format.Money(t.Expenses, cur)">
-                                <div class="bar-pair">
-                                    <div class="bar income" style="height:@Format.Pct((decimal)ih)%"></div>
-                                    <div class="bar expense" style="height:@Format.Pct((decimal)eh)%"></div>
-                                </div>
-                                <span class="bar-label">@t.Label</span>
+                            var t = Model.Trend[i];
+                            <div class="flow-col @(i == Model.Trend.Count - 1 ? "is-current" : "")" tabindex="0"
+                                 data-tooltip="@ChartTip.Build($"{Format.MonthName(t.Month)} {t.Year}", ("Income", Format.Money(t.Income, cur), "#10b981"), ("Expenses", Format.Money(t.Expenses, cur), "#f43f5e"), ("Net", Format.Money(t.Net, cur), null))">
+                                <span class="flow-bar is-income" style="height:@Format.Pct(t.Income / top * 100)%"></span>
+                                <span class="flow-bar is-expense" style="height:@Format.Pct(t.Expenses / top * 100)%"></span>
                             </div>
                         }
                     </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    @* ------------------------------------------------ savings goals *@
-    <div class="col-lg-6">
-        <div class="card-fin h-100">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Savings Goals</h2>
-                    <div class="card-sub">@Model.Goals.Count goal@(Model.Goals.Count == 1 ? "" : "s") in progress</div>
                 </div>
-                <a class="btn btn-soft btn-sm" asp-controller="Goals" asp-action="Index">Manage</a>
-            </div>
-            <div class="card-body-fin">
-                @if (Model.Goals.Count == 0)
-                {
-                    <div class="empty-state">
-                        <svg class="ico ico-lg text-muted"><use href="#i-goal"/></svg>
-                        <p>No savings goals yet. Set your first goal!</p>
-                        <a class="btn btn-fin btn-sm" asp-controller="Goals" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> New goal</a>
-                    </div>
-                }
-                else
-                {
-                    @foreach (var g in Model.Goals)
+                <span></span>
+                <div class="flow-x" aria-hidden="true">
+                    @for (var i = 0; i < Model.Trend.Count; i++)
                     {
-                        <div class="goal-row">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-semibold">@g.Goal.Name</span>
-                                <span class="small text-muted">@Format.Money(g.Saved, cur) / @Format.Money(g.Target, cur)</span>
-                            </div>
-                            <div class="progress-track">
-                                <div class="progress-fill" style="width:@Format.Pct(Math.Min(g.Percent, 100))%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between mt-1">
-                                <span class="small text-muted">@Format.Pct(g.Percent)% reached</span>
-                                @if (g.Completed)
-                                {
-                                    <span class="chip chip-success">Completed</span>
-                                }
-                            </div>
-                        </div>
+                        <span class="@(i == Model.Trend.Count - 1 ? "is-current" : "")">@Model.Trend[i].Label</span>
                     }
-                }
-            </div>
-        </div>
-    </div>
-
-    @* ------------------------------------------------ budget summary *@
-    <div class="col-lg-6">
-        <div class="card-fin h-100">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Budget Summary</h2>
-                    <div class="card-sub">@Model.MonthLabel</div>
                 </div>
-                <a class="btn btn-soft btn-sm" asp-controller="Budgets" asp-action="Index">Manage</a>
             </div>
-            <div class="card-body-fin">
-                @if (Model.Budgets.Count == 0)
+        }
+    </section>
+
+    @* ================================================================ Spending breakdown *@
+    <section class="panel span-4">
+        <header class="panel-head">
+            <div>
+                <h2 class="panel-title">Spending breakdown</h2>
+                <p class="panel-sub">@Model.MonthLabel · @Model.Spending.Count categor@(Model.Spending.Count == 1 ? "y" : "ies")</p>
+            </div>
+            <a class="link-action" asp-controller="Expenses" asp-action="Index">View all</a>
+        </header>
+
+        @if (Model.Spending.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-budget"/></svg>
+                <p>No expenses recorded for @Model.MonthLabel yet.</p>
+                <a class="btn btn-fin btn-sm" asp-controller="Expenses" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add expense</a>
+            </div>
+        }
+        else
+        {
+            var total = Model.SpendingTotal;
+            var slices = Model.Spending.Take(5).Select(s => (Name: s.Category, s.Amount, s.Percent, Color: Format.CategoryColor(s.Category))).ToList();
+            if (Model.Spending.Count > 5)
+            {
+                var rest = Model.Spending.Skip(5).ToList();
+                slices.Add(("Other", rest.Sum(r => r.Amount), rest.Sum(r => r.Percent), "#cbd5e1"));
+            }
+            const double r = 52;
+            var circ = 2 * Math.PI * r;
+            var offset = 0d;
+
+            <div class="donut-block">
+                <svg viewBox="0 0 140 140" class="donut-chart" role="img" aria-label="Spending by category">
+                    <circle cx="70" cy="70" r="@r" class="donut-track"/>
+                    <g transform="rotate(-90 70 70)">
+                        @foreach (var s in slices)
+                        {
+                            var len = (double)(s.Amount / total) * circ;
+                            var visible = Math.Max(0.5, len - (slices.Count > 1 ? 2 : 0));
+                            <circle cx="70" cy="70" r="@r" fill="none" stroke="@s.Color" stroke-width="14"
+                                    stroke-dasharray="@Format.Num(visible) @Format.Num(circ - visible)"
+                                    stroke-dashoffset="@Format.Num(-offset)" class="donut-slice" tabindex="0"
+                                    data-tooltip="@ChartTip.Build(s.Name, ("Spent", Format.Money(s.Amount, cur), s.Color), ("Share of month", Format.Pct(s.Percent) + "%", null))"></circle>
+                            offset += len;
+                        }
+                    </g>
+                    <text x="70" y="66" text-anchor="middle" class="donut-caption">Spent</text>
+                    <text x="70" y="84" text-anchor="middle" class="donut-total">@Format.Money0(total, cur)</text>
+                </svg>
+            </div>
+
+            <ul class="breakdown">
+                @foreach (var s in slices)
                 {
-                    <div class="empty-state">
-                        <svg class="ico ico-lg text-muted"><use href="#i-budget"/></svg>
-                        <p>No budgets for @Model.MonthLabel yet.</p>
-                        <a class="btn btn-fin btn-sm" asp-controller="Budgets" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add budget</a>
-                    </div>
+                    <li>
+                        <span class="dot" style="background:@s.Color"></span>
+                        <span class="breakdown-name">@s.Name</span>
+                        <span class="breakdown-pct">@Format.Pct(s.Percent)%</span>
+                        <span class="breakdown-amt">@Format.Money(s.Amount, cur)</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @* ================================================================ Recent activity *@
+    <section class="panel span-8">
+        <header class="panel-head">
+            <div>
+                <h2 class="panel-title">Recent activity</h2>
+                <p class="panel-sub">Your latest income and expenses</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="link-action" asp-controller="Income" asp-action="Index">Income</a>
+                <span class="text-muted">·</span>
+                <a class="link-action" asp-controller="Expenses" asp-action="Index">Expenses</a>
+            </div>
+        </header>
+
+        @if (Model.Recent.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-wallet"/></svg>
+                <p>Nothing here yet — add your first income or expense.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="activity">
+                @foreach (var t in Model.Recent)
+                {
+                    var color = Format.CategoryColor(t.Category);
+                    <li>
+                        <span class="activity-icon" style="color:@color; background:color-mix(in srgb, @color 12%, white)">
+                            <svg class="ico-sm"><use href="@(t.IsIncome ? "#i-in" : "#i-out")"/></svg>
+                        </span>
+                        <span class="activity-main">
+                            <span class="activity-title">@t.Title</span>
+                            <span class="activity-meta">@t.Category · @Format.Date(t.Date)</span>
+                        </span>
+                        <span class="activity-type @(t.IsIncome ? "is-income" : "is-expense")">@(t.IsIncome ? "Income" : "Expense")</span>
+                        <span class="activity-amount @(t.IsIncome ? "text-pos" : "")">@(t.IsIncome ? "+" : "−")@Format.Money(t.Amount, cur)</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @* ================================================================ Budgets + goals *@
+    <div class="span-4 dash-stack">
+        <section class="panel">
+            <header class="panel-head">
+                <div>
+                    <h2 class="panel-title">Budgets</h2>
+                    <p class="panel-sub">@Model.MonthLabel</p>
+                </div>
+                @if (Model.BudgetsOver > 0)
+                {
+                    <span class="chip chip-danger">@Model.BudgetsOver over limit</span>
                 }
                 else
                 {
+                    <a class="link-action" asp-controller="Budgets" asp-action="Index">Manage</a>
+                }
+            </header>
+
+            @if (Model.Budgets.Count == 0)
+            {
+                <div class="empty-state empty-sm">
+                    <p>No budgets for @Model.MonthLabel yet.</p>
+                    <a class="btn btn-fin btn-sm" asp-controller="Budgets" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add budget</a>
+                </div>
+            }
+            else
+            {
+                <ul class="meter-list">
                     @foreach (var b in Model.Budgets)
                     {
-                        <div class="budget-row">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="legend-row m-0"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span><span class="fw-semibold">@b.Budget.Category</span></span>
-                                <span class="small @Html.Raw(b.IsOver ? "text-neg fw-semibold" : "text-muted")">
-                                    @Format.Money(b.Spent, cur) of @Format.Money(b.Budget.Limit, cur)
-                                </span>
+                        <li>
+                            <div class="meter-row">
+                                <span class="meter-name"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span>
+                                <span class="meter-value"><strong class="@(b.IsOver ? "text-neg" : "")">@Format.Money0(b.Spent, cur)</strong> / @Format.Money0(b.Budget.Limit, cur)</span>
                             </div>
-                            <div class="progress-track">
-                                <div class="progress-fill @(b.IsOver ? "over" : b.IsNear ? "warn" : "")" style="width:@Format.Pct(Math.Min(b.PercentUsed, 100))%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between mt-1">
-                                <span class="small text-muted">@Format.Pct(b.PercentUsed)% used</span>
+                            <div class="meter"><span class="@(b.IsOver ? "over" : b.IsNear ? "warn" : "")" style="width:@Format.Pct(Math.Min(b.PercentUsed, 100))%"></span></div>
+                            <div class="meter-note @(b.IsOver ? "text-neg" : b.IsNear ? "text-warn" : "")">
                                 @if (b.IsOver)
                                 {
-                                    <span class="chip chip-danger">Over by @Format.Money(Math.Abs(b.Remaining), cur)</span>
+                                    @:Over by @Format.Money0(Math.Abs(b.Remaining), cur)
                                 }
                                 else
                                 {
-                                    <span class="small text-muted">@Format.Money(b.Remaining, cur) left</span>
+                                    @:@Format.Pct(b.PercentUsed)% used · @Format.Money0(b.Remaining, cur) left
                                 }
                             </div>
-                        </div>
+                        </li>
                     }
-                }
-            </div>
-        </div>
-    </div>
+                </ul>
+            }
+        </section>
 
-    @* ------------------------------------------------ recent transactions *@
-    <div class="col-12">
-        <div class="card-fin">
-            <div class="card-head">
+        <section class="panel">
+            <header class="panel-head">
                 <div>
-                    <h2 class="card-title">Recent Activity</h2>
-                    <div class="card-sub">latest income and expenses</div>
+                    <h2 class="panel-title">Savings goals</h2>
+                    <p class="panel-sub">@Model.Goals.Count(g => g.Completed) of @Model.Goals.Count completed</p>
                 </div>
-            </div>
-            <div class="table-responsive">
-                @if (Model.Recent.Count == 0)
-                {
-                    <div class="empty-state">
-                        <svg class="ico ico-lg text-muted"><use href="#i-wallet"/></svg>
-                        <p>Nothing here yet — add your first income or expense.</p>
-                    </div>
-                }
-                else
-                {
-                    <table class="fin-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Category</th>
-                                <th class="text-end">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var t in Model.Recent)
+                <a class="link-action" asp-controller="Goals" asp-action="Index">Manage</a>
+            </header>
+
+            @if (Model.Goals.Count == 0)
+            {
+                <div class="empty-state empty-sm">
+                    <p>No savings goals yet. Set your first goal!</p>
+                    <a class="btn btn-fin btn-sm" asp-controller="Goals" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> New goal</a>
+                </div>
+            }
+            else
+            {
+                const double gr = 17;
+                var gc = 2 * Math.PI * gr;
+                <ul class="goal-list">
+                    @foreach (var g in Model.Goals)
+                    {
+                        var pct = (double)Math.Min(g.Percent, 100);
+                        <li>
+                            <svg viewBox="0 0 44 44" class="goal-ring @(g.Completed ? "is-done" : "")" aria-hidden="true">
+                                <circle cx="22" cy="22" r="@gr" class="ring-track"/>
+                                <circle cx="22" cy="22" r="@gr" class="ring-fill" transform="rotate(-90 22 22)"
+                                        stroke-dasharray="@Format.Num(gc * pct / 100) @Format.Num(gc)"/>
+                                @if (g.Completed)
+                                {
+                                    <path d="m16 22.5 4 4 8-8.5" class="ring-check"/>
+                                }
+                                else
+                                {
+                                    <g><text x="22" y="25.5" text-anchor="middle">@Format.Num(Math.Round(pct))%</text></g>
+                                }
+                            </svg>
+                            <span class="goal-main">
+                                <span class="goal-name">@g.Goal.Name</span>
+                                <span class="goal-meta">@Format.Money0(g.Saved, cur) of @Format.Money0(g.Target, cur)@(g.CountdownLabel.Length > 0 && !g.Completed ? " · " + g.CountdownLabel : "")</span>
+                            </span>
+                            @* "In progress" is the default state, so only call out the exceptions. *@
+                            @if (g.Status != "In progress")
                             {
-                                <tr>
-                                    <td class="text-nowrap text-muted">@Format.Date(t.Date)</td>
-                                    <td class="fw-semibold">@t.Title</td>
-                                    <td><span class="chip"><span class="dot" style="background:@Format.CategoryColor(t.Category)"></span>@t.Category</span></td>
-                                    <td class="text-end amount @(t.IsIncome ? "pos" : "neg")">
-                                        @(t.IsIncome ? "+" : "-")@Format.Money(t.Amount, cur)
-                                    </td>
-                                </tr>
+                                <span class="chip @g.StatusClass">@g.Status</span>
                             }
-                        </tbody>
-                    </table>
-                }
-            </div>
-        </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
     </div>
 </div>

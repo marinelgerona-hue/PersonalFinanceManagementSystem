@@ -27,6 +27,29 @@ public class DashboardViewModel
     public List<GoalProgress> Goals { get; set; } = new();
     public List<RecentTransaction> Recent { get; set; } = new();
 
+    public string FirstName { get; set; } = string.Empty;
+
+    public decimal MonthlyNet => MonthlyIncome - MonthlyExpenses;
+
+    /// <summary>Share of this month's income that wasn't spent.</summary>
+    public decimal SavingsRate => MonthlyIncome > 0 ? Math.Round(MonthlyNet / MonthlyIncome * 100, 1) : 0;
+
+    public MonthPoint? PreviousMonth => Trend.Count > 1 ? Trend[^2] : null;
+
+    /// <summary>% change in income vs last month (null when last month had none).</summary>
+    public decimal? IncomeChange => Change(MonthlyIncome, PreviousMonth?.Income);
+
+    /// <summary>% change in expenses vs last month (null when last month had none).</summary>
+    public decimal? ExpenseChange => Change(MonthlyExpenses, PreviousMonth?.Expenses);
+
+    public decimal TrendIncomeTotal => Trend.Sum(t => t.Income);
+    public decimal TrendExpenseTotal => Trend.Sum(t => t.Expenses);
+
+    public int BudgetsOver => Budgets.Count(b => b.IsOver);
+
+    private static decimal? Change(decimal current, decimal? previous)
+        => previous is > 0 ? Math.Round((current - previous.Value) / previous.Value * 100, 1) : null;
+
     public decimal TrendMax => Trend.Count == 0 ? 0 : Math.Max(Trend.Max(t => t.Income), Trend.Max(t => t.Expenses));
     public decimal SpendingTotal => Spending.Sum(s => s.Amount);
 }
