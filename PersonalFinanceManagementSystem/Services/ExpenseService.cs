@@ -135,10 +135,12 @@ public class ExpenseService : IExpenseService
             .Select(g => new CategorySlice
             {
                 Category = g.Key,
-                Amount = g.Sum(e => e.Amount)
+                Amount = g.Sum(e => e.Amount),
+                Count = g.Count()
             })
             .OrderByDescending(x => x.Amount)
-            .ToList();
+            .ToList()
+            .WithPercentOf(null);
     }
 
     // Top spending categories for an entire year
@@ -147,7 +149,7 @@ public class ExpenseService : IExpenseService
         int year,
         int top)
     {
-        return _db.Expenses
+        var slices = _db.Expenses
             .Where(e =>
                 e.UserId == userId &&
                 e.Date.Year == year)
@@ -155,11 +157,15 @@ public class ExpenseService : IExpenseService
             .Select(g => new CategorySlice
             {
                 Category = g.Key,
-                Amount = g.Sum(e => e.Amount)
+                Amount = g.Sum(e => e.Amount),
+                Count = g.Count()
             })
             .OrderByDescending(x => x.Amount)
-            .Take(top)
             .ToList();
+
+        // Percent is a share of the whole year, not just of the top N shown.
+        var yearTotal = slices.Sum(x => x.Amount);
+        return slices.Take(top).ToList().WithPercentOf(yearTotal);
     }
 
     // Largest expense for one month
@@ -220,5 +226,20 @@ public class ExpenseService : IExpenseService
         }
 
         return income - spent;
+    }
+}
+
+internal static class CategorySliceExtensions
+{
+    /// <summary>Fills each slice's Percent as its share of <paramref name="total"/>
+    /// (or of the slices' own sum when total is null).</summary>
+    public static List<CategorySlice> WithPercentOf(this List<CategorySlice> slices, decimal? total)
+    {
+        var sum = total ?? slices.Sum(x => x.Amount);
+        foreach (var s in slices)
+        {
+            s.Percent = sum > 0 ? Math.Round(s.Amount / sum * 100, 1) : 0;
+        }
+        return slices;
     }
 }

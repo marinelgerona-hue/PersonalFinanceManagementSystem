@@ -23,13 +23,30 @@ public class ExpensesController : AppControllerBase
         _budgets = budgets;
     }
 
-    public IActionResult Index()
+    public IActionResult Index(ListQuery query)
     {
         var now = DateTime.Now;
         var all = _expenses.GetAll(CurrentUser.Id);
+        var budgetNames = _budgets.GetAll(CurrentUser.Id).ToDictionary(b => b.Id, b => BudgetDisplay(b));
+        string BudgetName(Expense e) => e.BudgetId is int id && budgetNames.TryGetValue(id, out var n) ? n : string.Empty;
+
+        var sorts = new Dictionary<string, Func<Expense, object?>>
+        {
+            ["date"] = e => e.Date,
+            ["category"] = e => e.Category,
+            ["budget"] = e => BudgetName(e),
+            ["pool"] = e => e.IncomePool.HasValue ? (int)e.IncomePool.Value : -1,
+            ["note"] = e => e.Note,
+            ["amount"] = e => e.Amount
+        };
+        query.Normalize(sorts.Keys, defaultSort: "date");
+
         var vm = new ExpenseListViewModel
         {
-            Items = all,
+            Query = query,
+            Page = all.ToPaged(query, sorts,
+                (e, term) => ListQueryExtensions.AnyContains(term, e.Category, e.Note, BudgetName(e))),
+            RecordCount = all.Count,
             Currency = CurrentUser.Currency,
             Total = all.Sum(e => e.Amount),
             MonthTotal = all.Where(e => e.Date.Year == now.Year && e.Date.Month == now.Month).Sum(e => e.Amount),
@@ -41,8 +58,7 @@ public class ExpensesController : AppControllerBase
             TotalIncome = _incomes.Total(CurrentUser.Id),
 
             // Budget name lookup for the “deducted from” column.
-            BudgetNames = _budgets.GetAll(CurrentUser.Id)
-                .ToDictionary(b => b.Id, b => BudgetDisplay(b))
+            BudgetNames = budgetNames
         };
         ViewData["Title"] = "Expenses";
         ViewData["ActiveNav"] = "expenses";

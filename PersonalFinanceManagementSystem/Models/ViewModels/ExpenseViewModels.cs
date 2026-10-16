@@ -51,7 +51,12 @@ public class ExpenseFormViewModel
 
 public class ExpenseListViewModel
 {
-    public List<Expense> Items { get; set; } = new();
+    /// <summary>The current page of the (searched, sorted) expense table.</summary>
+    public PagedList<Expense> Page { get; set; } = new();
+    public ListQuery Query { get; set; } = new();
+
+    /// <summary>All of the user's expense records, regardless of search or paging.</summary>
+    public int RecordCount { get; set; }
     public string Currency { get; set; } = "USD";
     public decimal MonthTotal { get; set; }
     public decimal Total { get; set; }
