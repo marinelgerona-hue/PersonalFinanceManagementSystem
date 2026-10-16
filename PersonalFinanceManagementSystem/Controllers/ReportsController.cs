@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PersonalFinanceManagementSystem.Helpers;
+using PersonalFinanceManagementSystem.Models.ViewModels;
 using PersonalFinanceManagementSystem.Services;
 
 namespace PersonalFinanceManagementSystem.Controllers;
@@ -26,7 +27,62 @@ public class ReportsController : AppControllerBase
     {
         ViewData["Title"] = "Reports";
         ViewData["ActiveNav"] = "reports";
-        return View();
+
+        var now = DateTime.Now;
+        var cur = CurrentUser.Currency;
+
+        // One cheap call into each sub-report so its card can show a real, live headline
+        // number instead of just a static description — same data each report page itself uses.
+        var monthly = _reports.GetMonthlySummary(CurrentUser.Id, now.Year, now.Month);
+        var expenseAnalysis = _reports.GetExpenseAnalysis(CurrentUser.Id, now.Year, now.Month);
+        var savings = _reports.GetSavingsReport(CurrentUser.Id);
+        var budgets = _reports.GetBudgetReport(CurrentUser.Id, now.Year, now.Month);
+        var income = _reports.GetIncomeReport(CurrentUser.Id);
+        var annual = _reports.GetAnnualSummary(CurrentUser.Id, now.Year);
+        var topCategory = expenseAnalysis.Categories.FirstOrDefault();
+
+        var vm = new ReportsLandingViewModel
+        {
+            Currency = cur,
+            MonthLabel = monthly.MonthLabel,
+            MonthIncome = monthly.TotalIncome,
+            MonthExpenses = monthly.TotalExpenses,
+            MonthSavingsRate = monthly.TotalIncome > 0 ? Math.Round(monthly.Net / monthly.TotalIncome * 100, 1) : 0,
+            Cards = new()
+            {
+                new("monthly", "i-calendar", "#6366f1", "Monthly Summary",
+                    $"Income, expenses, net savings and budgets for {monthly.MonthLabel}.", "Monthly",
+                    "Net saved this month", Format.Money(monthly.Net, cur)),
+
+                new("expenses", "i-expense", "#ef4444", "Expense Analysis",
+                    "Where your money goes — category breakdown, averages and biggest expenses.", "ExpenseAnalysis",
+                    topCategory is null ? "This month" : "Top category",
+                    topCategory is null ? "No expenses yet" : $"{topCategory.Category} · {Format.Pct(topCategory.Percent)}%"),
+
+                new("savings", "i-piggy", "#0ea5e9", "Savings Report",
+                    "Goal progress, totals and how much you set aside each month.", "Savings",
+                    "Overall funded", savings.TotalTarget > 0 ? $"{Format.Pct(savings.OverallPercent)}%" : "No goals yet"),
+
+                new("budgets", "i-budget", "#f59e0b", "Budget Report",
+                    "Budget vs actual spending per category, with over-budget warnings.", "Budgets",
+                    "This month",
+                    budgets.Budgets.Count == 0 ? "No budgets set" : budgets.OverCount > 0 ? $"{budgets.OverCount} over budget" : "All on track",
+                    StatNeedsAttention: budgets.OverCount > 0),
+
+                new("income", "i-income", "#10b981", "Income Report",
+                    "Income by source, monthly trend and your best month.", "Income",
+                    "Received this month", Format.Money(income.ThisMonth, cur)),
+
+                new("annual", "i-report", "#7c3aed", "Annual Summary",
+                    $"Month-by-month view of {now.Year} with totals and top categories.", "Annual",
+                    $"Net for {now.Year}", Format.Money(annual.TotalNet, cur)),
+
+                new("range", "i-calendar", "#14b8a6", "Date Range",
+                    "Pick any two dates for an exact income, expense and category total.", "DateRange",
+                    "Flexible range", "Any custom dates")
+            }
+        };
+        return View(vm);
     }
 
     public IActionResult Monthly(int? year, int? month)

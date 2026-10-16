@@ -113,3 +113,24 @@ public class AnnualSummaryViewModel
     public List<CategorySlice> TopCategories { get; set; } = new();
     public decimal TrendMax => Months.Count == 0 ? 0 : Math.Max(Months.Max(m => m.Income), Months.Max(m => m.Expenses));
 }
+
+/// <summary>The Reports hub (Views/Reports/Index.cshtml) — this month's headline numbers,
+/// plus a live one-line stat drawn from each sub-report so the page is a dashboard of what's
+/// in them, not just a directory of links to them.</summary>
+public class ReportsLandingViewModel
+{
+    public string Currency { get; set; } = "USD";
+    public string MonthLabel { get; set; } = string.Empty;
+    public decimal MonthIncome { get; set; }
+    public decimal MonthExpenses { get; set; }
+    public decimal MonthNet => MonthIncome - MonthExpenses;
+    public decimal MonthSavingsRate { get; set; }
+    public List<ReportCardInfo> Cards { get; set; } = new();
+}
+
+/// <summary>One tile on the Reports hub. <see cref="StatLabel"/>/<see cref="StatValue"/> are
+/// already-formatted display strings — each sub-report has a different kind of headline
+/// number, so the controller fills these in per card rather than forcing one shared shape.</summary>
+public record ReportCardInfo(
+    string Key, string Icon, string Color, string Title, string Description, string Action,
+    string StatLabel, string StatValue, bool StatNeedsAttention = false);

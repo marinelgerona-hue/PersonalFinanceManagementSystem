@@ -1,25 +1,68 @@
+@model ReportsLandingViewModel
 @{
-    ViewData["Subtitle"] = "Everything is calculated live from your income, expenses, budgets and goals";
-    var now = DateTime.Now;
-    var reports = new (string Key, string Icon, string Title, string Desc, string Action, string Tint)[]
-    {
-        ("monthly", "i-calendar", "Monthly Summary", $"Income, expenses, net savings and budgets for {now:MMMM yyyy}.", "Monthly", "tindigo"),
-        ("expenses", "i-expense", "Expense Analysis", "Where your money goes — category breakdown, averages and biggest expenses.", "ExpenseAnalysis", "tred"),
-        ("savings", "i-piggy", "Savings Report", "Goal progress, totals and how much you set aside each month.", "Savings", "tsky"),
-        ("budgets", "i-budget", "Budget Report", "Budget vs actual spending per category, with over-budget warnings.", "Budgets", "tamber"),
-        ("income", "i-income", "Income Report", "Income by source, monthly trend and your best month.", "Income", "tgreen"),
-        ("annual", "i-report", "Annual Summary", "Month-by-month view of the whole year with totals and top categories.", "Annual", "tviolet")
-    };
+    ViewData["Subtitle"] = "Everything below is calculated live from your income, expenses, budgets and goals.";
+    var cur = Model.Currency;
 }
 
+<section class="kpi-grid">
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            <span class="kpi-label">Income</span>
+            <span class="kpi-period">@Model.MonthLabel</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.MonthIncome, cur)</div>
+        <div class="kpi-foot"><span>received this month</span></div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <span class="kpi-label">Expenses</span>
+            <span class="kpi-period">@Model.MonthLabel</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.MonthExpenses, cur)</div>
+        <div class="kpi-foot"><span>spent this month</span></div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            <span class="kpi-label">Net saved</span>
+        </div>
+        <div class="kpi-value @(Model.MonthNet < 0 ? "text-neg" : "")">@(Model.MonthNet < 0 ? "−" : "")@Format.Money(Math.Abs(Model.MonthNet), cur)</div>
+        <div class="kpi-foot"><span>income − expenses</span></div>
+    </article>
+
+    <article class="kpi">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            <span class="kpi-label">Savings rate</span>
+        </div>
+        <div class="kpi-value">@Format.Pct(Model.MonthSavingsRate)%</div>
+        <div class="kpi-foot"><span>of income kept this month</span></div>
+    </article>
+</section>
+
+<div class="mt-4 mb-3">
+    <h2 class="section-title mb-0">All reports</h2>
+    <div class="card-sub">Open any report for the full breakdown, charts and a CSV export</div>
+</div>
+
 <div class="row g-3">
-    @foreach (var r in reports)
+    @foreach (var r in Model.Cards)
     {
         <div class="col-md-6 col-xl-4">
             <a class="card-fin report-card" asp-controller="Reports" asp-action="@r.Action">
-                <span class="stat-icon @r.Tint"><svg class="ico"><use href="#@r.Icon"/></svg></span>
+                <span class="report-card-icon" style="color:@r.Color; background:color-mix(in srgb, @r.Color 14%, white)">
+                    <svg class="ico"><use href="#@r.Icon"/></svg>
+                </span>
                 <h3 class="report-title">@r.Title</h3>
-                <p class="report-desc">@r.Desc</p>
+                <p class="report-desc">@r.Description</p>
+                <div class="report-stat @(r.StatNeedsAttention ? "is-attention" : "")">
+                    <span class="report-stat-label">@r.StatLabel</span>
+                    <span class="report-stat-value">@r.StatValue</span>
+                </div>
                 <span class="report-open">View report <svg class="ico-sm"><use href="#i-up"/></svg></span>
             </a>
         </div>

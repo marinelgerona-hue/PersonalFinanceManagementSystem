@@ -92,7 +92,8 @@
                                     var len = (double)(s.Amount / total) * donutC;
                                     <circle cx="60" cy="60" r="48" fill="none" stroke="@Format.CategoryColor(s.Category)" stroke-width="18"
                                             stroke-dasharray="@Format.Num(len) @Format.Num(donutC - len)"
-                                            stroke-dashoffset="@Format.Num(-offset)"/>
+                                            stroke-dashoffset="@Format.Num(-offset)" class="donut-slice" tabindex="0"
+                                            data-tooltip="@ChartTip.Build(s.Category, ("Spent", Format.Money(s.Amount, cur), Format.CategoryColor(s.Category)), ("Share", Format.Pct(s.Percent) + "%", null), ("Transactions", s.Count.ToString(), null))"/>
                                     offset += len;
                                 }
                                 <text x="60" y="56" text-anchor="middle" class="donut-value">@Format.Money0(total, cur)</text>

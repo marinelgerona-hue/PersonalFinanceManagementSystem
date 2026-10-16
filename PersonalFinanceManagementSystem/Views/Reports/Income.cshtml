@@ -61,7 +61,7 @@
                         @foreach (var t in Model.Trend)
                         {
                             var h = (double)(t.Income / Model.TrendMax) * 100;
-                            <div class="bar-group" title="@t.Label: @Format.Money(t.Income, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build($"{Format.MonthName(t.Month)} {t.Year}", ("Income", Format.Money(t.Income, cur), "#10b981"))">
                                 <div class="bar-pair bar-pair-single">
                                     <div class="bar income" style="height:@Format.Pct((decimal)h)%"></div>
                                 </div>

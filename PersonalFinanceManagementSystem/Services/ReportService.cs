@@ -79,7 +79,7 @@ public class ReportService : IReportService
                 now.Year,
                 now.Month),
 
-            Recent = RecentTransactions(userId, 6)
+            Recent = RecentTransactions(userId, 10)
         };
 
         vm.Balance = vm.TotalIncome - vm.TotalExpenses;

@@ -118,7 +118,7 @@
                         {
                             var ih = (double)(m.Income / Model.TrendMax) * 100;
                             var eh = (double)(m.Expenses / Model.TrendMax) * 100;
-                            <div class="bar-group" title="@Format.MonthName(m.Month): income @Format.Money(m.Income, cur), expenses @Format.Money(m.Expenses, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build(Format.MonthName(m.Month), ("Income", Format.Money(m.Income, cur), "#10b981"), ("Expenses", Format.Money(m.Expenses, cur), "#f43f5e"), ("Net", Format.Money(m.Net, cur), null))">
                                 <div class="bar-pair">
                                     <div class="bar income" style="height:@Format.Pct((decimal)ih)%"></div>
                                     <div class="bar expense" style="height:@Format.Pct((decimal)eh)%"></div>

@@ -62,7 +62,7 @@
                         @foreach (var m in Model.MonthlyContributions)
                         {
                             var h = (double)(m.Amount / Model.MaxContribution) * 100;
-                            <div class="bar-group" title="@m.Label: @Format.Money(m.Amount, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build($"{Format.MonthName(m.Month)} {m.Year}", ("Added to goals", Format.Money(m.Amount, cur), "#10b981"))">
                                 <span class="bar-value">@Format.Money0(m.Amount, cur)</span>
                                 <div class="bar-pair bar-pair-single">
                                     <div class="bar income" style="height:@Format.Pct((decimal)h)%"></div>
