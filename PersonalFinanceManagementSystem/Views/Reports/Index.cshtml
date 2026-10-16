@@ -1,0 +1,27 @@
+@{
+    ViewData["Subtitle"] = "Everything is calculated live from your income, expenses, budgets and goals";
+    var now = DateTime.Now;
+    var reports = new (string Key, string Icon, string Title, string Desc, string Action, string Tint)[]
+    {
+        ("monthly", "i-calendar", "Monthly Summary", $"Income, expenses, net savings and budgets for {now:MMMM yyyy}.", "Monthly", "tindigo"),
+        ("expenses", "i-expense", "Expense Analysis", "Where your money goes — category breakdown, averages and biggest expenses.", "ExpenseAnalysis", "tred"),
+        ("savings", "i-piggy", "Savings Report", "Goal progress, totals and how much you set aside each month.", "Savings", "tsky"),
+        ("budgets", "i-budget", "Budget Report", "Budget vs actual spending per category, with over-budget warnings.", "Budgets", "tamber"),
+        ("income", "i-income", "Income Report", "Income by source, monthly trend and your best month.", "Income", "tgreen"),
+        ("annual", "i-report", "Annual Summary", "Month-by-month view of the whole year with totals and top categories.", "Annual", "tviolet")
+    };
+}
+
+<div class="row g-3">
+    @foreach (var r in reports)
+    {
+        <div class="col-md-6 col-xl-4">
+            <a class="card-fin report-card" asp-controller="Reports" asp-action="@r.Action">
+                <span class="stat-icon @r.Tint"><svg class="ico"><use href="#@r.Icon"/></svg></span>
+                <h3 class="report-title">@r.Title</h3>
+                <p class="report-desc">@r.Desc</p>
+                <span class="report-open">View report <svg class="ico-sm"><use href="#i-up"/></svg></span>
+            </a>
+        </div>
+    }
+</div>

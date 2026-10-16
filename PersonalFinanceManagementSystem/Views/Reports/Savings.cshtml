@@ -1,0 +1,126 @@
+@model SavingsReportViewModel
+@{
+    var cur = Model.Currency;
+    var now = DateTime.Now;
+}
+
+<partial name="_ReportsNav" />
+
+<div class="row g-3 my-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            <div class="stat-label">Total saved</div>
+            <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
+            <div class="stat-foot">across @Model.Goals.Count goal@(Model.Goals.Count == 1 ? "" : "s")</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
+            <div class="stat-label">Combined target</div>
+            <div class="stat-value">@Format.Money(Model.TotalTarget, cur)</div>
+            <div class="stat-foot">@Format.Pct(Model.OverallPercent)% funded overall</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
+            <div class="stat-label">Added this month</div>
+            <div class="stat-value text-pos">@Format.Money(Model.ThisMonthSaved, cur)</div>
+            <div class="stat-foot">@now.ToString("MMMM yyyy")</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-check"/></svg></span>
+            <div class="stat-label">Goals completed</div>
+            <div class="stat-value">@Model.GoalsCompleted</div>
+            <div class="stat-foot">@Format.Money(Model.TotalRemaining, cur) still to save</div>
+        </div>
+    </div>
+    <a class="btn btn-soft" asp-action="ExportSavings"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Monthly Contributions</h2>
+                    <div class="card-sub">amounts added to goals, last 6 months</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.MaxContribution <= 0)
+                {
+                    <div class="empty-state"><p>No contributions yet — add funds to a goal to see history.</p></div>
+                }
+                else
+                {
+                    <div class="bar-chart">
+                        @foreach (var m in Model.MonthlyContributions)
+                        {
+                            var h = (double)(m.Amount / Model.MaxContribution) * 100;
+                            <div class="bar-group" title="@m.Label: @Format.Money(m.Amount, cur)">
+                                <span class="bar-value">@Format.Money0(m.Amount, cur)</span>
+                                <div class="bar-pair bar-pair-single">
+                                    <div class="bar income" style="height:@Format.Pct((decimal)h)%"></div>
+                                </div>
+                                <span class="bar-label">@m.Label</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Goal Progress</h2>
+                    <div class="card-sub">saved vs target per goal</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                @if (Model.Goals.Count == 0)
+                {
+                    <div class="empty-state"><p>No savings goals yet.</p></div>
+                }
+                else
+                {
+                    <table class="fin-table">
+                        <thead>
+                            <tr><th>Goal</th><th class="text-end">Saved</th><th class="text-end">Target</th><th class="text-end">Remaining</th><th style="min-width:140px">Progress</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.Goals)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@g.Goal.Name</div>
+                                        @if (g.Goal.Deadline is DateTime dl)
+                                        {
+                                            <div class="small text-muted">by @Format.Date(dl)</div>
+                                        }
+                                    </td>
+                                    <td class="text-end amount">@Format.Money(g.Saved, cur)</td>
+                                    <td class="text-end text-muted">@Format.Money(g.Target, cur)</td>
+                                    <td class="text-end">@Format.Money(g.Remaining, cur)</td>
+                                    <td>
+                                        <div class="progress-track">
+                                            <div class="progress-fill" style="width:@Format.Pct(Math.Min(g.Percent, 100))%"></div>
+                                        </div>
+                                        <span class="small text-muted">@Format.Pct(g.Percent)%</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

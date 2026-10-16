@@ -1,0 +1,152 @@
+@model GoalListViewModel
+@{
+    var cur = Model.Currency;
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            <div>
+                <div class="stat-label">Total saved</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalSaved, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
+            <div>
+                <div class="stat-label">Total target</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalTarget, cur)</div>
+                <div class="stat-foot">@Format.Pct(Model.OverallPercent)% overall progress</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
+            <div>
+                <div class="stat-label">Added this month</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.ThisMonthSaved, cur)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="section-title mb-0">Your goals</h2>
+        <div class="card-sub">Progress is calculated automatically as you add funds</div>
+    </div>
+    <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> New Goal</a>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="card-fin">
+        <div class="empty-state">
+            <svg class="ico ico-lg text-muted"><use href="#i-goal"/></svg>
+            <p>You have no savings goals yet. Create one and start putting money aside!</p>
+            <a class="btn btn-fin btn-sm" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> New Goal</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card-sub mb-2">Plans show what to save daily, weekly and monthly to reach each goal by its target date — they update automatically as funds are added or the target date changes</div>
+    <div class="row g-3">
+        @foreach (var g in Model.Items)
+        {
+            <div class="col-lg-6">
+                <div class="card-fin goal-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h3 class="goal-name">@g.Goal.Name</h3>
+                            <div class="card-sub">
+                                @if (!string.IsNullOrWhiteSpace(g.Goal.Note))
+                                {
+                                    @g.Goal.Note
+                                }
+                                else if (g.Goal.Deadline is DateTime dl)
+                                {
+                                    <span><svg class="ico-sm"><use href="#i-calendar"/></svg> by @Format.Date(dl)</span>
+                                }
+                                else
+                                {
+                                    <span>No deadline</span>
+                                }
+                                @if (!string.IsNullOrEmpty(g.CountdownLabel))
+                                {
+                                    <span class="chip ms-1 @(!g.Completed && g.IsDueSoon ? "chip-warn" : g.IsOverdue ? "chip-danger" : "chip-info")">@g.CountdownLabel</span>
+                                }
+                            </div>
+                        </div>
+                        <span class="chip @g.StatusClass">@g.Status</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <span class="goal-saved">@Format.Money(g.Saved, cur)</span>
+                        <span class="text-muted small">of @Format.Money(g.Target, cur)</span>
+                    </div>
+                    <div class="progress-track progress-track-lg">
+                        <div class="progress-fill @(g.Completed ? "" : g.Percent >= 60 ? "" : "warn")" style="width:@Format.Pct(Math.Min(g.Percent, 100))%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span class="small text-muted">@Format.Pct(g.Percent)% funded · status: @g.Status</span>
+                        <span class="small text-muted">@Format.Money(g.Remaining, cur) to go</span>
+                    </div>
+
+                    @* Savings plan: recomputed from the database with every page
+                       load — contributions and target-date edits update it instantly. *@
+                    @if (g.HasPlan)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mt-1 mb-3">
+                            <span class="chip chip-success" title="Amount to set aside each day to reach the target by the deadline"><svg class="ico-sm"><use href="#i-calendar"/></svg> Daily: @Format.Money(g.SavePerDay ?? 0m, cur)</span>
+                            <span class="chip chip-info" title="Amount to set aside each week"><svg class="ico-sm"><use href="#i-calendar"/></svg> Weekly: @Format.Money(g.SavePerWeek ?? 0m, cur)</span>
+                            <span class="chip chip-warn" title="Amount to set aside each month"><svg class="ico-sm"><use href="#i-calendar"/></svg> Monthly: @Format.Money(g.SavePerMonth ?? 0m, cur)</span>
+                        </div>
+                    }
+                    else if (g.Goal.Deadline is DateTime past && g.DaysLeft < 0)
+                    {
+                        <div class="small text-muted mt-1 mb-3">Savings plan unavailable — the target date has passed. <a asp-action="Edit" asp-route-id="@g.Goal.Id">Change the target date</a> to get a fresh daily/weekly/monthly plan.</div>
+                    }
+                    else
+                    {
+                        <div class="mb-3"><span class="small text-muted">Savings plan available once a target date is set.</span></div>
+                    }
+
+                    <form asp-action="AddFunds" method="post" class="add-funds-form">
+                        <input type="hidden" name="GoalId" value="@g.Goal.Id" />
+                        <input type="hidden" name="GoalName" value="@g.Goal.Name" />
+                        <input type="hidden" name="Date" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <div class="d-flex gap-2">
+                            <div class="input-group input-group-sm flex-grow-1">
+                                <span class="input-group-text">@Format.Symbol(cur)</span>
+                                <input type="number" name="Amount" step="0.01" min="0.01" class="form-control" placeholder="Add funds" required />
+                            </div>
+                            <button type="submit" class="btn btn-fin btn-sm text-nowrap"><svg class="ico-sm"><use href="#i-plus"/></svg> Add funds</button>
+                        </div>
+                    </form>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        @if (g.Goal.Deadline is DateTime deadline)
+                        {
+                            <span class="small text-muted"><svg class="ico-sm"><use href="#i-calendar"/></svg> Target date: @Format.Date(deadline)</span>
+                        }
+                        else
+                        {
+                            <span></span>
+                        }
+                        <span>
+                            <a class="btn-icon" asp-action="Edit" asp-route-id="@g.Goal.Id" title="Edit goal / target date"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                            <form class="d-inline" asp-action="Delete" asp-route-id="@g.Goal.Id" method="post" onsubmit="return confirm('Delete this goal? Its saved amount will be removed.');">
+                                <button type="submit" class="btn-icon danger" title="Delete goal"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                            </form>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

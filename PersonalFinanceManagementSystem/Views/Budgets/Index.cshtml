@@ -1,0 +1,143 @@
+@model BudgetListViewModel
+@{
+    var cur = Model.Currency;
+    var now = DateTime.Now;
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-budget"/></svg></span>
+            <div>
+                <div class="stat-label">Total budgeted</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalBudget, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div>
+                <div class="stat-label">Spent</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalSpent, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-check"/></svg></span>
+            <div>
+                <div class="stat-label">Remaining</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalRemaining, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon @(Model.OverCount > 0 ? "tint-red" : "tint-amber")"><svg class="ico"><use href="#i-up"/></svg></span>
+            <div>
+                <div class="stat-label">Overall used</div>
+                <div class="stat-value stat-value-sm">@Format.Pct(Model.OverallPercent)%</div>
+                <div class="stat-foot">@Model.OverCount over budget</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head flex-wrap gap-2">
+        <div>
+            <h2 class="card-title">Budgets</h2>
+            <div class="card-sub">All periods active in or around @Format.MonthName(Model.Month) @Model.Year</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form method="get" class="d-flex gap-2 align-items-center">
+                <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == Model.Month)">@Format.MonthName(m)</option>
+                    }
+                </select>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                    @for (var y = now.Year - 4; y <= now.Year + 1; y++)
+                    {
+                        <option value="@y" selected="@(y == Model.Year)">@y</option>
+                    }
+                </select>
+            </form>
+            <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Budget</a>
+        </div>
+    </div>
+
+    <div class="card-body-fin">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-budget"/></svg>
+                <p>No budgets for @Format.MonthName(Model.Month) @Model.Year yet.</p>
+                <a class="btn btn-fin btn-sm" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Budget</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th class="text-end">Budget</th>
+                            <th class="text-end">Spent</th>
+                            <th class="text-end">Remaining</th>
+                            <th style="min-width:180px">Progress</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="chip"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span>
+                                    <span class="chip chip-info ms-1" title="Budget period">@b.Budget.Period</span>
+                                </td>
+                                <td class="text-end amount">@Format.Money(b.Budget.Limit, cur)</td>
+                                <td class="text-end amount">@Format.Money(b.Spent, cur)</td>
+                                <td class="text-end amount @(b.Remaining < 0 ? "neg" : "pos")">@Format.Money(b.Remaining, cur)</td>
+                                <td>
+                                    <div class="progress-track">
+                                        <div class="progress-fill @(b.IsOver ? "over" : b.IsNear ? "warn" : "")" style="width:@Format.Pct(Math.Min(b.PercentUsed, 100))%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1">
+                                        <span class="small text-muted">@Format.Pct(b.PercentUsed)% used</span>
+                                        @if (b.IsOver)
+                                        {
+                                            <span class="chip chip-danger">Over budget</span>
+                                        }
+                                        else if (b.IsNear)
+                                        {
+                                            <span class="chip chip-warn">Close to limit</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="chip chip-success">On track</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn-icon" asp-action="Edit" asp-route-id="@b.Budget.Id" title="Edit"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                                    <form class="d-inline" asp-action="Delete" asp-route-id="@b.Budget.Id" method="post" onsubmit="return confirm('Delete the @b.Budget.Category budget?');">
+                                        <button type="submit" class="btn-icon danger" title="Delete"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 pb-3 small text-muted">
+                Spent amounts are calculated live from your expenses: each expense is deducted from its assigned budget, or from any
+                same-category budget whose period covers the expense date — never from two budgets at once.
+            </div>
+        }
+    </div>
+</div>

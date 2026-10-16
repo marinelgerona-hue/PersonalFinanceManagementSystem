@@ -1,0 +1,164 @@
+@model ExpenseAnalysisViewModel
+@{
+    var cur = Model.Currency;
+    var now = DateTime.Now;
+    var donutR = 48d;
+    var donutC = 2 * Math.PI * donutR;
+    var rising = Model.Total >= Model.PreviousMonthTotal;
+}
+
+<partial name="_ReportsNav" />
+
+<div class="d-flex align-items-center gap-2 my-3 flex-wrap">
+    <form method="get" class="period-picker card-fin">
+        <span class="text-muted small fw-semibold">Period</span>
+        <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(m == Model.Month)">@Format.MonthName(m)</option>
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+            @for (var y = now.Year - 4; y <= now.Year; y++)
+            {
+                <option value="@y" selected="@(y == Model.Year)">@y</option>
+            }
+        </select>
+    </form>
+    <a class="btn btn-soft" asp-action="ExportExpenseAnalysis" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div class="stat-label">Total spent</div>
+            <div class="stat-value text-neg">@Format.Money(Model.Total, cur)</div>
+            <div class="stat-foot">@Model.MonthLabel</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
+            <div class="stat-label">Average per day</div>
+            <div class="stat-value">@Format.Money(Model.AveragePerDay, cur)</div>
+            <div class="stat-foot">across the month</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-up"/></svg></span>
+            <div class="stat-label">Biggest expense</div>
+            <div class="stat-value">@Format.Money(Model.LargestExpense?.Amount ?? 0, cur)</div>
+            <div class="stat-foot">@(Model.LargestExpense is null ? "no expenses" : $"{Model.LargestExpense.Category} · {Format.Date(Model.LargestExpense.Date)}")</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <span class="stat-icon @(rising ? "tint-red" : "tint-green")"><svg class="ico"><use href="#@(rising ? "i-up" : "i-down")"/></svg></span>
+            <div class="stat-label">vs previous month</div>
+            <div class="stat-value @(rising ? "text-neg" : "text-pos")">
+                @(Model.PreviousMonthTotal > 0 ? $"{(rising ? "+" : "")}{Format.Pct(Model.ChangePercent)}%" : "—")
+            </div>
+            <div class="stat-foot">prev: @Format.Money(Model.PreviousMonthTotal, cur)</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-0">
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Category Split</h2>
+                    <div class="card-sub">@Model.MonthLabel</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.Categories.Count == 0)
+                {
+                    <div class="empty-state"><p>No expenses recorded this month.</p></div>
+                }
+                else
+                {
+                    var total = Model.Total;
+                    var offset = 0d;
+                    <div class="d-flex flex-column flex-sm-row align-items-center gap-4">
+                        <div class="donut-wrap">
+                            <svg viewBox="0 0 120 120" class="donut">
+                                <circle cx="60" cy="60" r="48" fill="none" stroke="#eef2f7" stroke-width="18"/>
+                                @foreach (var s in Model.Categories)
+                                {
+                                    var len = (double)(s.Amount / total) * donutC;
+                                    <circle cx="60" cy="60" r="48" fill="none" stroke="@Format.CategoryColor(s.Category)" stroke-width="18"
+                                            stroke-dasharray="@Format.Num(len) @Format.Num(donutC - len)"
+                                            stroke-dashoffset="@Format.Num(-offset)"/>
+                                    offset += len;
+                                }
+                                <text x="60" y="56" text-anchor="middle" class="donut-value">@Format.Money0(total, cur)</text>
+                                <text x="60" y="72" text-anchor="middle" class="donut-caption">total</text>
+                            </svg>
+                        </div>
+                        <ul class="legend list-unstyled flex-grow-1 w-100">
+                            @foreach (var s in Model.Categories.Take(6))
+                            {
+                                <li class="legend-row">
+                                    <span class="dot" style="background:@Format.CategoryColor(s.Category)"></span>
+                                    <span class="legend-name">@s.Category</span>
+                                    <span class="legend-amount">@Format.Money(s.Amount, cur)</span>
+                                    <span class="legend-pct">@Format.Pct(s.Percent)%</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Category Breakdown</h2>
+                    <div class="card-sub">amounts, share, counts and averages</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                @if (Model.Categories.Count == 0)
+                {
+                    <div class="empty-state"><p>No expenses recorded this month.</p></div>
+                }
+                else
+                {
+                    <table class="fin-table">
+                        <thead>
+                            <tr><th>Category</th><th class="text-end">Amount</th><th class="text-end">Share</th><th class="text-end">Records</th><th class="text-end">Average</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in Model.Categories)
+                            {
+                                <tr>
+                                    <td><span class="chip"><span class="dot" style="background:@Format.CategoryColor(c.Category)"></span>@c.Category</span></td>
+                                    <td class="text-end amount">@Format.Money(c.Amount, cur)</td>
+                                    <td class="text-end">@Format.Pct(c.Percent)%</td>
+                                    <td class="text-end">@c.Count</td>
+                                    <td class="text-end">@Format.Money(c.Average, cur)</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td>Total</td>
+                                <td class="text-end amount">@Format.Money(Model.Total, cur)</td>
+                                <td class="text-end">100%</td>
+                                <td class="text-end">@Model.Categories.Sum(c => c.Count)</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

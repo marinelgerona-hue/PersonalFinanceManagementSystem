@@ -1,0 +1,267 @@
+@model ExpenseFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+}
+
+<div class="form-card card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">@(isEdit ? "Edit Expense" : "Add Expense")</h2>
+            <div class="card-sub">Category, amount, date, budget and an optional note</div>
+        </div>
+        <a class="btn btn-soft btn-sm" asp-action="Index">Cancel</a>
+    </div>
+
+    <div class="card-body-fin">
+        <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+
+        <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" novalidate>
+            <input type="hidden" asp-for="Id" />
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Category" class="form-label">Category</label>
+                    <select asp-for="Category" class="form-select">
+                        <option value="">Choose a category…</option>
+                        @foreach (var category in Catalog.ExpenseCategories)
+                        {
+                            <option value="@category" selected="@(category == Model.Category)">@category</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Category" class="text-danger small"></span>
+
+                    @* Shown only while "Other" is selected; the typed value
+                       becomes the saved expense category. *@
+                    <div id="customCategoryField" class="mt-2" style="display:none">
+                        <label for="CustomCategory" class="form-label">Custom category</label>
+                        <input asp-for="CustomCategory" type="text" class="form-control"
+                               placeholder="e.g. Pet care" maxlength="100"
+                               data-val="true" data-val-required="Please enter your category." />
+                        <span asp-validation-for="CustomCategory" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Amount" class="form-label">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">@Format.Symbol(ViewBag.User?.Currency)</span>
+                        <input asp-for="Amount" type="number" step="0.01" min="0.01" class="form-control" placeholder="0.00" />
+                    </div>
+                    <span asp-validation-for="Amount" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Date" class="form-label">Date</label>
+                    <input asp-for="Date" type="date" class="form-control" />
+                    <span asp-validation-for="Date" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Note" class="form-label">Note <span class="text-muted fw-normal">(optional)</span></label>
+                    <input asp-for="Note" class="form-control" placeholder="e.g. Weekly groceries" />
+                    <span asp-validation-for="Note" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="IncomePool" class="form-label">Income period to deduct from</label>
+                    <select asp-for="IncomePool" id="incomePoolSelect" class="form-select">
+                        <option value="@IncomePeriod.Daily">Daily income</option>
+                        <option value="@IncomePeriod.Weekly">Weekly income</option>
+                        <option value="@IncomePeriod.Monthly">Monthly income</option>
+                        <option value="@IncomePeriod.Yearly">Yearly income</option>
+                    </select>
+                    <div class="small text-muted mt-1" id="poolHint"></div>
+                    <span asp-validation-for="IncomePool" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="BudgetId" class="form-label">Budget <span class="text-muted fw-normal">(optional)</span></label>
+                    <select asp-for="BudgetId" id="budgetSelect" class="form-select">
+                        <option value="">No budget — amounts still count against any matching budget period</option>
+                        @foreach (var option in Model.Budgets)
+                        {
+                            <option value="@option.Id"
+                                    data-category="@option.Category"
+                                    data-start="@option.Start.ToString("yyyy-MM-dd")"
+                                    data-end="@option.End.ToString("yyyy-MM-dd")"
+                                    selected="@(Model.BudgetId == option.Id || (Model.Id == 0 && option.IsMatch))">
+                                @option.Category · @option.Period (@option.Start.ToString("MMM d") – @option.End.ToString("MMM d"))
+                            </option>
+                        }
+                    </select>
+                    <div class="small text-muted mt-1" id="budgetHint"></div>
+                    <span asp-validation-for="BudgetId" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-fin">@(isEdit ? "Save changes" : "Add expense")</button>
+                <a class="btn btn-soft" asp-action="Index">Back to list</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* The custom category field appears only while "Other" is picked in the
+   category select; the typed value is saved as the expense category. *@
+<script>
+(function () {
+    var categorySelect = document.getElementById('Category');
+    var field = document.getElementById('customCategoryField');
+    var input = document.getElementById('CustomCategory');
+    if (!categorySelect || !field) return;
+
+    function updateCustomCategoryField() {
+        if (categorySelect.value === 'Other') {
+            field.style.display = '';
+        } else {
+            field.style.display = 'none';
+            if (input) input.value = ''; // never submit stale custom text
+        }
+    }
+
+    categorySelect.addEventListener('change', updateCustomCategoryField);
+
+    updateCustomCategoryField();
+})();
+</script>
+
+@* Shows the live available balance of the chosen income pool: actual income
+   of that period recorded on or before the expense date, minus expenses
+   already deducted from that pool up to the same date. The server blocks
+   the save when the amount would overdraw the pool. An edited record's own
+   old deduction is excluded so the balance is shown before this expense. *@
+<script>
+(function () {
+    var ledger        = @Html.Raw(Json.Serialize(Model.PoolLedger));
+    var editingId     = @Model.Id;
+    var currency      = '@Html.Raw(Format.Symbol(ViewBag.User?.Currency))';
+    var today         = '@DateTime.Today.ToString("yyyy-MM-dd")';
+
+    var poolSelect    = document.getElementById('incomePoolSelect');
+    var dateInput     = document.getElementById('Date');
+    var amountInput   = document.getElementById('Amount');
+    var hint          = document.getElementById('poolHint');
+    if (!poolSelect || !hint) return;
+
+    var periodNames = { 0: 'Daily', 1: 'Weekly', 2: 'Monthly', 3: 'Yearly' };
+
+    function money(v) {
+        var n = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (v < 0 ? '\u2212' : '') + currency + n;
+    }
+
+    function cutoffDate() {
+        return (dateInput && dateInput.value) ? dateInput.value : today;
+    }
+
+    function prettyDate(s) {
+        var p = String(s).split('-');
+        return p.length === 3
+            ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][p[1] - 1] + ' ' + Number(p[2]) + ', ' + p[0]
+            : s;
+    }
+
+    // available balance of the selected pool up to the cutoff date
+    function balance(pool, cutoff) {
+        var available = 0;
+        for (var j = 0; j < ledger.length; j++) {
+            var row = ledger[j];
+            var d = String(row.date).slice(0, 10);
+            if (d > cutoff) continue;                      // not yet received/done
+            if (editingId && row.kind === 'expense' && row.expenseId === editingId) continue;
+            if (row.period !== pool) continue;
+            available += row.kind === 'income' ? Number(row.amount) : -Number(row.amount);
+        }
+        return available;
+    }
+
+    function updatePoolHint() {
+        var pool     = Number(poolSelect.value);
+        var cutoff   = cutoffDate();
+        var amount   = Number((amountInput && amountInput.value) || 0);
+        var available = balance(pool, cutoff);
+        var after     = available - amount;
+        var name      = periodNames[pool];
+        var safe      = after < 0;
+
+        hint.innerHTML = name + ' income available as of ' + prettyDate(cutoff) + ': '
+            + '<strong>' + money(available) + '</strong> \u00b7 after this expense: <strong>' + money(after) + '</strong>';
+        hint.classList.toggle('text-danger', safe);
+
+        if (safe) {
+            hint.innerHTML += '<br>\u26a0\ufe0f Not enough ' + name + ' income recorded by this date \u2014 saving this expense will be blocked.';
+        }
+    }
+
+    poolSelect.addEventListener('change', updatePoolHint);
+    if (dateInput) dateInput.addEventListener('change', updatePoolHint);
+    if (amountInput) amountInput.addEventListener('input', updatePoolHint);
+
+    updatePoolHint();
+})();
+</script>
+
+@* Filters the budget list to the user's budgets matching the chosen category
+   and the budget period containing the expense date. The best-matching
+   period (smallest window) is pre-selected automatically when the user has
+   not already chosen a budget in this session. *@
+<script>
+(function () {
+    var select = document.getElementById('budgetSelect');
+    var hint = document.getElementById('budgetHint');
+    if (!select) return;
+
+    var categorySelect = document.getElementById('Category');
+    var customCategoryInput = document.getElementById('CustomCategory');
+    var dateInput = document.getElementById('Date');
+
+    function effectiveCategory() {
+        var category = categorySelect ? categorySelect.value : '';
+        // With "Other" picked, the typed custom name is the category used
+        // for budget matching (budgets saved with that custom name).
+        return category === 'Other' && customCategoryInput
+            ? customCategoryInput.value.trim()
+            : category;
+    }
+
+    function filterBudgets() {
+        var category = effectiveCategory();
+        var date = dateInput ? dateInput.value : '';
+        var current = select.value;
+        var best = null;
+        var bestSpan = null;
+        var visible = 0;
+
+        for (var i = 0; i < select.options.length; i++) {
+            var option = select.options[i];
+            if (!option.value) { option.hidden = false;
+                continue;
+            }
+            var matches = date !== ''
+                && option.dataset.category === category
+                && option.dataset.start <= date
+                && option.dataset.end >= date;
+            option.hidden = !matches;
+            if (matches) {
+                visible++;
+                var span = (new Date(option.dataset.end) - new Date(option.dataset.start)) / 86400000;
+                if (best === null || span < bestSpan) { best = option; bestSpan = span; }
+            }
+        }
+
+        if (current && !select.options[select.selectedIndex].hidden) {
+            // keep the user's choice (or the server-side pre-selection)
+        } else if (best) {
+            select.value = best.value;
+        } else {
+            select.value = '';
+        }
+
+        hint.textContent = select.value
+            ? 'Amount is deducted from this budget\u2019s remaining balance.'
+            : (visible === 0 && category
+                ? 'No budget matches ' + category + ' on this date yet — create one in Budgets.'
+                : '');
+    }
+
+    if (categorySelect) categorySelect.addEventListener('change', filterBudgets);
+    if (customCategoryInput) customCategoryInput.addEventListener('input', filterBudgets);
+    if (dateInput) dateInput.addEventListener('change', filterBudgets);
+
+    filterBudgets();
+})();
+</script>

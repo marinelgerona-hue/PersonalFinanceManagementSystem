@@ -1,0 +1,161 @@
+@model MonthlySummaryViewModel
+@{
+    var cur = Model.Currency;
+    var now = DateTime.Now;
+}
+
+<partial name="_ReportsNav" />
+
+<div class="d-flex align-items-center gap-2 my-3 flex-wrap">
+    <form method="get" class="period-picker card-fin">
+        <span class="text-muted small fw-semibold">Period</span>
+        <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(m == Model.Month)">@Format.MonthName(m)</option>
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+            @for (var y = now.Year - 4; y <= now.Year; y++)
+            {
+                <option value="@y" selected="@(y == Model.Year)">@y</option>
+            }
+        </select>
+    </form>
+    <a class="btn btn-soft" asp-action="ExportMonthly" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Income</div>
+                    <div class="stat-value text-pos">@Format.Money(Model.TotalIncome, cur)</div>
+                    <div class="stat-foot">@Model.IncomeCount record@(Model.IncomeCount == 1 ? "" : "s")</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Expenses</div>
+                    <div class="stat-value text-neg">@Format.Money(Model.TotalExpenses, cur)</div>
+                    <div class="stat-foot">@Model.ExpenseCount record@(Model.ExpenseCount == 1 ? "" : "s")</div>
+                </div>
+                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Net (saved)</div>
+                    <div class="stat-value @(Model.Net >= 0 ? "text-pos" : "text-neg")">@Format.Money(Model.Net, cur)</div>
+                    <div class="stat-foot">income − expenses</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Added to goals</div>
+                    <div class="stat-value">@Format.Money(Model.Saved, cur)</div>
+                    <div class="stat-foot">avg/day spent: @Format.Money(Model.AveragePerDay, cur)</div>
+                </div>
+                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-0">
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Top Spending Categories</h2>
+                    <div class="card-sub">@Model.MonthLabel</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.TopCategories.Count == 0)
+                {
+                    <div class="empty-state"><p>No expenses in this month.</p></div>
+                }
+                else
+                {
+                    var max = Model.TopCategories.Max(c => c.Amount);
+                    @foreach (var c in Model.TopCategories)
+                    {
+                        <div class="cat-row">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="legend-row m-0"><span class="dot" style="background:@Format.CategoryColor(c.Category)"></span><span class="fw-semibold">@c.Category</span></span>
+                                <span class="small text-muted">@Format.Money(c.Amount, cur) · @Format.Pct(c.Percent)%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="cat-fill" style="width:@Format.Pct((decimal)((double)c.Amount / (double)max) * 100)%; background:@Format.CategoryColor(c.Category)"></div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Budgets · @Model.MonthLabel</h2>
+                    <div class="card-sub">how you tracked against your limits</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                @if (Model.Budgets.Count == 0)
+                {
+                    <div class="empty-state"><p>No budgets were set for this month.</p></div>
+                }
+                else
+                {
+                    <table class="fin-table">
+                        <thead>
+                            <tr><th>Category</th><th class="text-end">Budget</th><th class="text-end">Spent</th><th class="text-end">Remaining</th><th class="text-end">Used</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in Model.Budgets)
+                            {
+                                <tr>
+                                    <td><span class="chip"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span></td>
+                                    <td class="text-end amount">@Format.Money(b.Budget.Limit, cur)</td>
+                                    <td class="text-end amount">@Format.Money(b.Spent, cur)</td>
+                                    <td class="text-end amount @(b.Remaining < 0 ? "neg" : "pos")">@Format.Money(b.Remaining, cur)</td>
+                                    <td class="text-end">
+                                        <span class="chip @(b.IsOver ? "chip-danger" : b.IsNear ? "chip-warn" : "chip-success")">@Format.Pct(b.PercentUsed)%</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+            <div class="px-3 pb-3">
+                @if (Model.LargestExpense is { } bigExp)
+                {
+                    <div class="callout">Largest expense: <strong>@Format.Money(bigExp.Amount, cur)</strong> — @bigExp.Category (@Format.Date(bigExp.Date))</div>
+                }
+                @if (Model.LargestIncome is { } bigInc)
+                {
+                    <div class="callout">Largest income: <strong>@Format.Money(bigInc.Amount, cur)</strong> — @bigInc.Source (@Format.Date(bigInc.Date))</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

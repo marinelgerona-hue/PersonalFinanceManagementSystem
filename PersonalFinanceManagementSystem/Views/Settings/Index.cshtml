@@ -1,0 +1,120 @@
+@model SettingsViewModel
+@{
+    var changePassword = new ChangePasswordViewModel();
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card-fin">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Profile information</h2>
+                    <div class="card-sub">Update your basic account details</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+                <form asp-action="UpdateProfile" method="post" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Phone" class="form-label"></label>
+                            <input asp-for="Phone" class="form-control" placeholder="+1 555 000 0000" />
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Currency" class="form-label"></label>
+                            <select asp-for="Currency" class="form-select">
+                                @foreach (var (code, name) in Catalog.Currencies)
+                                {
+                                    <option value="@code" selected="@(code == Model.Currency)">@name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Currency" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-fin mt-4">Save profile</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card-fin mt-3">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Change password</h2>
+                    <div class="card-sub">Verify your current password to set a new one</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                <form asp-action="ChangePassword" method="post" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="@changePassword.CurrentPassword" class="form-label"></label>
+                            <input asp-for="@changePassword.CurrentPassword" class="form-control" autocomplete="current-password" />
+                            <span asp-validation-for="@changePassword.CurrentPassword" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="@changePassword.NewPassword" class="form-label"></label>
+                            <input asp-for="@changePassword.NewPassword" class="form-control" autocomplete="new-password" />
+                            <span asp-validation-for="@changePassword.NewPassword" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="@changePassword.ConfirmPassword" class="form-label"></label>
+                            <input asp-for="@changePassword.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                            <span asp-validation-for="@changePassword.ConfirmPassword" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-fin mt-4">Change password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-fin text-center p-4">
+            <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" id="photoForm">
+                <div class="avatar-editor">
+                    <span class="avatar avatar-lg">
+                        @if (!string.IsNullOrEmpty(Model.ProfileImage))
+                        {
+                            <img src="@Model.ProfileImage" alt="Profile picture" class="avatar-img" />
+                        }
+                        else
+                        {
+                            @string.Join("", Model.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])))
+                        }
+                    </span>
+                    <label class="avatar-cam" title="Change profile picture">
+                        <svg class="ico-sm" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3.5" /></svg>
+                        <input type="file" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" class="d-none" onchange="document.getElementById('photoForm').submit()" />
+                    </label>
+                </div>
+            </form>
+
+            @if (!string.IsNullOrEmpty(Model.ProfileImage))
+            {
+                <form asp-action="RemovePhoto" method="post" class="mt-1">
+                    <button type="submit" class="btn btn-soft btn-sm">Remove picture</button>
+                </form>
+            }
+
+            <h3 class="fw-bold mt-2 mb-0">@Model.FullName</h3>
+            <div class="text-muted small mb-3">@Model.Email</div>
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                <span class="chip"><svg class="ico-sm"><use href="#i-calendar" /></svg> Member since @Format.Date(Model.MemberSince)</span>
+                <span class="chip chip-info">@Format.Symbol(Model.Currency).Trim() account</span>
+            </div>
+            <hr class="my-3" />
+            
+        </div>
+    </div>
+</div>

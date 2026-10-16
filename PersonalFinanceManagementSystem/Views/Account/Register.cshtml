@@ -1,0 +1,60 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Create account";
+}
+
+<div class="auth-card">
+    <div class="auth-brand">
+        <span class="brand-logo"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h4"/></svg></span>
+        <span>Finance <span class="text-brand">Management</span></span>
+    </div>
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-sub">Start tracking income, expenses, budgets and goals in minutes.</p>
+
+    <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+
+    <form asp-action="Register" method="post" novalidate>
+        <div class="mb-3">
+            <label asp-for="FullName" class="form-label"></label>
+            <input asp-for="FullName" class="form-control" placeholder="Marinel Gerona" autocomplete="name" />
+            <span asp-validation-for="FullName" class="text-danger small"></span>
+        </div>
+        <div class="row">
+            <div class="col-md-7 mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" placeholder="you@example.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="col-md-5 mb-3">
+                <label asp-for="Phone" class="form-label">Phone <span class="text-muted fw-normal">(optional)</span></label>
+                <input asp-for="Phone" class="form-control" placeholder="+09535733103" autocomplete="tel" />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Currency" class="form-label"></label>
+            <select asp-for="Currency" class="form-select">
+                @foreach (var (code, name) in Catalog.Currencies)
+                {
+                    <option value="@code" selected="@(code == Model.Currency)">@name</option>
+                }
+            </select>
+            <span asp-validation-for="Currency" class="text-danger small"></span>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" placeholder="At least 6 characters" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6 mb-4">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <input asp-for="ConfirmPassword" class="form-control" placeholder="Repeat password" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-fin w-100 btn-lg">Create account</button>
+    </form>
+
+    <p class="auth-alt">Already have an account? <a asp-action="Login">Sign in</a></p>
+</div>

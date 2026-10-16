@@ -1,0 +1,211 @@
+using Microsoft.AspNetCore.Mvc;
+using PersonalFinanceManagementSystem.Models;
+using PersonalFinanceManagementSystem.Models.ViewModels;
+using PersonalFinanceManagementSystem.Services;
+
+namespace PersonalFinanceManagementSystem.Controllers;
+
+/// <summary>Income management — add, edit, delete and view income records.</summary>
+public class IncomeController : AppControllerBase
+{
+    private readonly IIncomeService _incomes;
+
+    public IncomeController(IAuthService auth, IIncomeService incomes) : base(auth)
+        => _incomes = incomes;
+
+    public IActionResult Index(IncomePeriod? period)
+    {
+        var now = DateTime.Now;
+        var all = _incomes.GetAll(CurrentUser.Id);
+
+        // When a period filter is chosen, the table only shows that kind of income.
+        var filtered = period is null
+            ? all
+            : all.Where(i => i.Period == period).ToList();
+
+        var vm = new IncomeListViewModel
+        {
+            Items = filtered,
+            Currency = CurrentUser.Currency,
+
+            // All-time income: the total of all unique records, counted once.
+            Total = all.Sum(i => i.Amount),
+
+            // “This month” counts only Monthly-period income received in the
+            // current calendar month. Weekly, daily and yearly income stay
+            // exclusively in their own period cards above — no record is
+            // counted in more than one summary.
+            MonthTotal = all
+                .Where(i => i.Period == IncomePeriod.Monthly &&
+                            i.Date.Year == now.Year &&
+                            i.Date.Month == now.Month)
+                .Sum(i => i.Amount),
+
+            ThisMonthCount = all
+                .Count(i => i.Period == IncomePeriod.Monthly &&
+                            i.Date.Year == now.Year &&
+                            i.Date.Month == now.Month),
+
+            PeriodFilter = period,
+            PeriodBreakdown = _incomes.TotalsByPeriod(CurrentUser.Id)
+        };
+        ViewData["Title"] = "Income";
+        ViewData["ActiveNav"] = "income";
+        return View(vm);
+    }
+
+    // ------------------------------------------------------------ create
+
+    [HttpGet]
+    public IActionResult Create()
+    {
+        ViewData["Title"] = "Add Income";
+        ViewData["ActiveNav"] = "income";
+        return View("IncomeForm", new IncomeFormViewModel { Date = DateTime.Today });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Create(IncomeFormViewModel model)
+    {
+        ResolveSource(model);
+        if (!ModelState.IsValid)
+        {
+            RestoreSourceForDisplay(model);
+            ViewData["Title"] = "Add Income";
+            ViewData["ActiveNav"] = "income";
+            return View("IncomeForm", model);
+        }
+
+        _incomes.Add(new Income
+        {
+            UserId = CurrentUser.Id,
+            Source = model.Source,
+            Amount = model.Amount,
+            Period = model.Period,
+            Date = model.Date,
+            Note = model.Note ?? string.Empty
+        });
+
+        TempData["Success"] = $"Income of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} added.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ------------------------------------------------------------ custom source
+
+    /// <summary>When Source is "Other", requires the custom source the user
+    /// typed and stores it as the income source. Custom text posted while a
+    /// catalog source is picked (field is hidden) is ignored.</summary>
+    private void ResolveSource(IncomeFormViewModel model)
+    {
+        if (model.Source != "Other") return;
+
+        var custom = model.CustomSource?.Trim() ?? string.Empty;
+
+        if (custom.Length == 0)
+        {
+            ModelState.AddModelError(nameof(model.CustomSource),
+                "Please enter your income source.");
+            return;
+        }
+
+        model.Source = custom;
+    }
+
+    /// <summary>For validation-failure re-renders after a successful "Other"
+    /// mapping: re-selects "Other" and keeps the typed value so the user
+    /// still sees the custom source that was applied.</summary>
+    private static void RestoreSourceForDisplay(IncomeFormViewModel model)
+    {
+        if (model.CustomSource is { } custom &&
+            custom.Length > 0 &&
+            !Catalog.IncomeSources.Contains(model.Source, StringComparer.OrdinalIgnoreCase) &&
+            model.Source.Equals(custom, StringComparison.OrdinalIgnoreCase))
+        {
+            model.Source = "Other";
+        }
+    }
+
+    // ------------------------------------------------------------ edit
+
+    [HttpGet]
+    public IActionResult Edit(int id)
+    {
+        var income = _incomes.Get(CurrentUser.Id, id);
+        if (income is null) return NotFound();
+
+        ViewData["Title"] = "Edit Income";
+        ViewData["ActiveNav"] = "income";
+        // A previously saved custom source is not in the catalog, so the
+        // form selects "Other" and prefills the custom field with its value.
+        var isCustomSource = !Catalog.IncomeSources.Contains(income.Source);
+        return View("IncomeForm", new IncomeFormViewModel
+        {
+            Id = income.Id,
+            Source = isCustomSource ? "Other" : income.Source,
+            CustomSource = isCustomSource ? income.Source : null,
+            Amount = income.Amount,
+            Period = income.Period,
+            Date = income.Date,
+            Note = income.Note
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Edit(int id, IncomeFormViewModel model)
+    {
+        ResolveSource(model);
+        if (!ModelState.IsValid)
+        {
+            RestoreSourceForDisplay(model);
+            ViewData["Title"] = "Edit Income";
+            ViewData["ActiveNav"] = "income";
+            return View("IncomeForm", model);
+        }
+
+        var updated = _incomes.Update(new Income
+        {
+            Id = id,
+            UserId = CurrentUser.Id,
+            Source = model.Source,
+            Amount = model.Amount,
+            Period = model.Period,
+            Date = model.Date,
+            Note = model.Note ?? string.Empty
+        });
+
+        TempData[updated ? "Success" : "Error"] = updated
+            ? "Income updated."
+            : "Income record was not found.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ------------------------------------------------------------ export
+
+    /// <summary>Downloads every income record as CSV.</summary>
+    [HttpGet]
+    public IActionResult Export()
+    {
+        var items = _incomes.GetAll(CurrentUser.Id);
+        var csv = new Helpers.CsvFile("Date", "Source", "Period", "Amount", "Currency", "Note");
+        foreach (var item in items)
+        {
+            csv.AddRow(item.Date, item.Source, item.Period.ToString(), item.Amount, CurrentUser.Currency, item.Note);
+        }
+        return csv.ToFileResult($"finapp-income-{DateTime.Today:yyyy-MM-dd}.csv");
+    }
+
+    // ------------------------------------------------------------ delete
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Delete(int id)
+    {
+        var deleted = _incomes.Delete(CurrentUser.Id, id);
+        TempData[deleted ? "Success" : "Error"] = deleted
+            ? "Income record deleted."
+            : "Income record was not found.";
+        return RedirectToAction(nameof(Index));
+    }
+}

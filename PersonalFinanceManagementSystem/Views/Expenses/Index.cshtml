@@ -1,0 +1,139 @@
+@model ExpenseListViewModel
+@{
+    var cur = Model.Currency;
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            <div>
+                <div class="stat-label">Total income</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.TotalIncome, cur)</div>
+                <div class="stat-foot">all sources, all time</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div>
+                <div class="stat-label">Total expenses</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.Total, cur)</div>
+                <div class="stat-foot">all records, all time</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            <div>
+                <div class="stat-label">Remaining cash balance</div>
+                <div class="stat-value stat-value-sm @(Model.RemainingBalance < 0 ? "text-neg" : "text-pos")">@Format.Money(Model.RemainingBalance, cur)</div>
+                <div class="stat-foot">income − expenses · updates automatically</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div>
+                <div class="stat-label">This month</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.MonthTotal, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            <div>
+                <div class="stat-label">All-time spending</div>
+                <div class="stat-value stat-value-sm">@Format.Money(Model.Total, cur)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-calendar"/></svg></span>
+            <div>
+                <div class="stat-label">Records this month</div>
+                <div class="stat-value stat-value-sm">@Model.ThisMonthCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Expense Records</h2>
+            <div class="card-sub">@Model.Items.Count record@(Model.Items.Count == 1 ? "" : "s") · totals update automatically</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-soft" asp-action="Export"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+            <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Expense</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-expense"/></svg>
+                <p>No expenses yet. Add your first expense record to get started.</p>
+                <a class="btn btn-fin btn-sm" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Expense</a>
+            </div>
+        }
+        else
+        {
+            <table class="fin-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Budget</th>
+                        <th>Income pool</th>
+                        <th>Note</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-nowrap text-muted">@Format.Date(item.Date)</td>
+                            <td>
+                                <span class="chip"><span class="dot" style="background:@Format.CategoryColor(item.Category)"></span>@item.Category</span>
+                            </td>
+                            <td class="text-muted note-cell">
+                                @(item.BudgetId is int bid && Model.BudgetNames.TryGetValue(bid, out var name) ? name : "—")
+                            </td>
+                            <td>
+                                @if (item.IncomePool is { } pool)
+                                {
+                                    <span class="chip"><span class="dot" style="background:@Format.CategoryColor(pool.ToString())"></span>@pool</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-muted note-cell">@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td>
+                            <td class="text-end amount neg">-@Format.Money(item.Amount, cur)</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn-icon" asp-action="Edit" asp-route-id="@item.Id" title="Edit"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                                <form class="d-inline" asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Delete this expense record?');">
+                                    <button type="submit" class="btn-icon danger" title="Delete"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

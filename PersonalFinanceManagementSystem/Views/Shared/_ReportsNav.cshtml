@@ -1,0 +1,14 @@
+@{
+    var active = (ViewData["ActiveReport"] as string) ?? "";
+    var now = DateTime.Now;
+}
+
+<div class="reports-nav card-fin p-2">
+    <a class="report-pill @(active == "monthly" ? "active" : "")" asp-controller="Reports" asp-action="Monthly">Monthly Summary</a>
+    <a class="report-pill @(active == "expenses" ? "active" : "")" asp-controller="Reports" asp-action="ExpenseAnalysis">Expense Analysis</a>
+    <a class="report-pill @(active == "savings" ? "active" : "")" asp-controller="Reports" asp-action="Savings">Savings Report</a>
+    <a class="report-pill @(active == "budgets" ? "active" : "")" asp-controller="Reports" asp-action="Budgets">Budget Report</a>
+    <a class="report-pill @(active == "income" ? "active" : "")" asp-controller="Reports" asp-action="Income">Income Report</a>
+    <a class="report-pill @(active == "annual" ? "active" : "")" asp-controller="Reports" asp-action="Annual">Annual Summary</a>
+    <a class="report-pill @(active == "range" ? "active" : "")" asp-controller="Reports" asp-action="DateRange">Date Range</a>
+</div>

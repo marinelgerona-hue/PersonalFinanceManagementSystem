@@ -1,0 +1,147 @@
+@model DateRangeViewModel
+@{
+    var cur = Model.Currency;
+    var fromStr = Model.From.ToString("yyyy-MM-dd");
+    var toStr = Model.To.ToString("yyyy-MM-dd");
+}
+
+<partial name="_ReportsNav" />
+
+<div class="d-flex align-items-center gap-2 my-3 flex-wrap">
+    <form method="get" class="period-picker card-fin">
+        <span class="text-muted small fw-semibold">From</span>
+        <input type="date" name="from" value="@fromStr" class="form-control form-control-sm" />
+        <span class="text-muted small fw-semibold">To</span>
+        <input type="date" name="to" value="@toStr" class="form-control form-control-sm" />
+        <button type="submit" class="btn btn-fin btn-sm">Apply</button>
+    </form>
+    <a class="btn btn-soft" asp-action="ExportDateRange" asp-route-from="@fromStr" asp-route-to="@toStr"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total income</div>
+                    <div class="stat-value text-pos">@Format.Money(Model.TotalIncome, cur)</div>
+                    <div class="stat-foot">@Model.IncomeCount record@(Model.IncomeCount == 1 ? "" : "s") in range</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total expenses</div>
+                    <div class="stat-value text-neg">@Format.Money(Model.TotalExpenses, cur)</div>
+                    <div class="stat-foot">@Model.ExpenseCount record@(Model.ExpenseCount == 1 ? "" : "s") in range</div>
+                </div>
+                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Remaining</div>
+                    <div class="stat-value @(Model.RemainingBalance >= 0 ? "text-pos" : "text-neg")">@Format.Money(Model.RemainingBalance, cur)</div>
+                    <div class="stat-foot">income − expenses</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Added to goals</div>
+                    <div class="stat-value">@Format.Money(Model.Saved, cur)</div>
+                    <div class="stat-foot">avg/day spent: @Format.Money(Model.AveragePerDay, cur)</div>
+                </div>
+                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin mt-3">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">@Model.Label</h2>
+            <div class="card-sub">@Model.Days day@(Model.Days == 1 ? "" : "s") · totals calculated only from transactions inside this range</div>
+        </div>
+    </div>
+    <div class="card-body-fin">
+        @if (Model.IncomeItems.Count == 0 && Model.ExpenseItems.Count == 0)
+        {
+            <div class="empty-state"><p>No transactions in the selected date range.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr><th>Date</th><th>Type</th><th>Source / Category</th><th>Note</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var i in Model.IncomeItems)
+                        {
+                            <tr>
+                                <td class="text-nowrap text-muted">@Format.Date(i.Date)</td>
+                                <td><span class="chip chip-success">Income</span></td>
+                                <td>@i.Source</td>
+                                <td class="text-muted note-cell">@(string.IsNullOrWhiteSpace(i.Note) ? "—" : i.Note)</td>
+                                <td class="text-end amount pos">+@Format.Money(i.Amount, cur)</td>
+                            </tr>
+                        }
+                        @foreach (var e in Model.ExpenseItems)
+                        {
+                            <tr>
+                                <td class="text-nowrap text-muted">@Format.Date(e.Date)</td>
+                                <td><span class="chip chip-danger">Expense</span></td>
+                                <td>@e.Category</td>
+                                <td class="text-muted note-cell">@(string.IsNullOrWhiteSpace(e.Note) ? "—" : e.Note)</td>
+                                <td class="text-end amount neg">-@Format.Money(e.Amount, cur)</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td colspan="4" class="text-end fw-semibold">Remaining balance</td>
+                            <td class="text-end amount @(Model.RemainingBalance >= 0 ? "pos" : "neg")">@Format.Money(Model.RemainingBalance, cur)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.TopCategories.Count > 0)
+{
+    <div class="card-fin mt-3">
+        <div class="card-head">
+            <div>
+                <h2 class="card-title">Spending by Category</h2>
+                <div class="card-sub">inside the selected range</div>
+            </div>
+        </div>
+        <div class="card-body-fin">
+            @foreach (var c in Model.TopCategories)
+            {
+                <div class="cat-row">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="legend-row m-0"><span class="dot" style="background:@Format.CategoryColor(c.Category)"></span><span class="fw-semibold">@c.Category</span></span>
+                        <span class="small text-muted">@Format.Money(c.Amount, cur) · @Format.Pct(c.Percent)%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="cat-fill" style="width:@Format.Pct(c.Percent)%; background:@Format.CategoryColor(c.Category)"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
