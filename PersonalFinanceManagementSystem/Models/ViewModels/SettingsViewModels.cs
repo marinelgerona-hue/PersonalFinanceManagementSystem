@@ -16,9 +16,9 @@ public class SettingsViewModel
     /// <summary>ISO code of the country picked for the phone number (e.g. "US").</summary>
     public string PhoneCountry { get; set; } = "US";
 
-    /// <summary>The national part of the number, without the country dial code.</summary>
-    [RegularExpression(@"^\s*(?:\d[\s\-().]*){4,14}$",
-        ErrorMessage = "Enter 4–14 digits, without the country code.")]
+    /// <summary>The national part of the number, without the country dial code.
+    /// Checked against the picked country (PH keeps the strict PH mobile rules).</summary>
+    [PhoneNational]
     [Display(Name = "Phone number")]
     public string? Phone { get; set; }
 

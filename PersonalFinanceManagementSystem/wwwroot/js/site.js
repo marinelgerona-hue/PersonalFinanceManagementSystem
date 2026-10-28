@@ -220,6 +220,72 @@
     });
 })();
 
+// Phone number field (Register/Settings): while the Philippines (+63) is picked,
+// the input is limited to digits only, capped at 10 — letters, symbols and extra
+// digits are stripped as they are typed or pasted. Other countries behave as before.
+(function () {
+    document.querySelectorAll('.phone-control').forEach(function (control) {
+        var select = control.querySelector('select.phone-country');
+        var input = control.querySelector('input[type="tel"], input[inputmode="tel"]');
+        if (!select || !input) return;
+
+        function stripToPh() {
+            var digits = input.value.replace(/\D/g, '').slice(0, 10);
+            if (digits !== input.value) input.value = digits;
+        }
+
+        input.addEventListener('input', function () {
+            if (select.value === 'PH') stripToPh();
+        });
+
+        select.addEventListener('change', function () {
+            if (select.value === 'PH') stripToPh();
+        });
+    });
+})();
+
+// Country-aware phone rule: the data-val-phmobile* attributes are rendered by
+// [PhoneNational] (see Models/Catalog.cs). PH selected → exactly 10 digits
+// starting with 9; any other country keeps the 4–14 digit rule.
+(function () {
+    if (!window.jQuery || !window.jQuery.validator || !window.jQuery.validator.unobtrusive) return;
+    var jq = window.jQuery;
+
+    function countrySelect(element) {
+        var form = element.form || document;
+        return jq(form).find('select.phone-country').get(0);
+    }
+
+    jq.validator.addMethod('phmobile', function (value, element) {
+        var digits = (value || '').replace(/\D/g, '');
+        if (!digits.length) return true; // the field is optional
+        var select = countrySelect(element);
+        if (select && select.value === 'PH') {
+            return digits.length === 10 && digits.charAt(0) === '9';
+        }
+        return digits.length >= 4 && digits.length <= 14 && /^[0-9\s\-().]+$/.test(value);
+    });
+
+    jq.validator.unobtrusive.adapters.add('phmobile', function (options) {
+        var select = countrySelect(options.element);
+        options.rules['phmobile'] = {};
+        setMessage();
+
+        // The rule and its message follow the picked country: when it changes,
+        // swap the message shown and re-verify the field immediately.
+        if (select) select.addEventListener('change', function () {
+            setMessage();
+            jq(options.element).valid();
+        });
+
+        function setMessage() {
+            var attr = select && select.value === 'PH' ? 'data-val-phmobile-ph' : 'data-val-phmobile-other';
+            options.messages['phmobile'] = options.element.getAttribute(attr) ||
+                options.element.getAttribute('data-val-phmobile');
+        }
+    });
+})();
+
 // Password strength meter: <input data-strength-meter="id-of-.pw-strength">.
 (function () {
     var labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];

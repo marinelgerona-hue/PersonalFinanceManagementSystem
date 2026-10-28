@@ -31,9 +31,9 @@ public class RegisterViewModel
     [Display(Name = "Country code")]
     public string PhoneCountry { get; set; } = "US";
 
-    /// <summary>The national part of the number, without the country dial code.</summary>
-    [RegularExpression(@"^\s*(?:\d[\s\-().]*){4,14}$",
-        ErrorMessage = "Enter 4–14 digits, without the country code.")]
+    /// <summary>The national part of the number, without the country code.
+    /// Checked against the picked country (PH keeps the strict PH mobile rules).</summary>
+    [PhoneNational]
     [DataType(DataType.PhoneNumber)]
     [Display(Name = "Phone (optional)")]
     public string? Phone { get; set; }
