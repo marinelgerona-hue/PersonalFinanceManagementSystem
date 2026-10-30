@@ -18,7 +18,7 @@ Solution file: `PersonalFinanceManagementSystem.slnx` at repo root.
 export PATH="$HOME/.dotnet:$PATH" DOTNET_ROOT="$HOME/.dotnet"
 ```
 
-MySQL runs in Docker: container `pfms-mysql`, host port **3307** (3306 is taken by another project), user `root`, password `12345`, database `PersonalFinanceManagementDb`.
+MySQL: the skill's Docker note is stale on this machine — Docker Desktop isn't installed. The `PersonalFinanceManagementDb` database lives on the **native MySQL Server 8.0** (service `MySQL80`), host port **3306**, user `root`, password `12345`. Client: `"/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" -h 127.0.0.1 -P 3306 -uroot -p12345 PersonalFinanceManagementDb`. If connection is refused, start the service: `powershell -Command "Start-Service MySQL80"`.
 
 Build + run (from the inner project folder):
 ```bash
