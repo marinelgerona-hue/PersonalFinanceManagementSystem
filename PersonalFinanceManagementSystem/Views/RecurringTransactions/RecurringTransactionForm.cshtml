@@ -28,7 +28,7 @@
                     <label asp-for="Label" class="form-label" id="labelFieldLabel">@(Model.Type == RecurringTransactionType.Expense ? "Category" : "Source")</label>
                     <select asp-for="Label" id="labelSelect" class="form-select">
                         <option value="">Choose…</option>
-                        @foreach (var option in Model.Type == RecurringTransactionType.Expense ? Catalog.ExpenseCategories : Catalog.IncomeSources)
+                        @foreach (var option in (IReadOnlyList<string>?)ViewBag.LabelOptions ?? (Model.Type == RecurringTransactionType.Expense ? Catalog.ExpenseCategories : Catalog.IncomeSources))
                         {
                             <option value="@option" selected="@(option == Model.Label)">@option</option>
                         }
@@ -116,8 +116,8 @@
    apply to recurring expenses. *@
 <script>
 (function () {
-    var expenseCategories = @Html.Raw(Json.Serialize(Catalog.ExpenseCategories));
-    var incomeSources = @Html.Raw(Json.Serialize(Catalog.IncomeSources));
+    var expenseCategories = @Html.Raw(Json.Serialize((IReadOnlyList<string>?)ViewBag.ExpenseOptions ?? Catalog.ExpenseCategories));
+    var incomeSources = @Html.Raw(Json.Serialize((IReadOnlyList<string>?)ViewBag.IncomeOptions ?? Catalog.IncomeSources));
     var currentLabel = @Html.Raw(Json.Serialize(Model.Label));
     var currentType = '@Model.Type';
 

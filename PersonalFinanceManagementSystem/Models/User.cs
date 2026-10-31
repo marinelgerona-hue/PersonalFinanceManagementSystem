@@ -1,5 +1,12 @@
 namespace PersonalFinanceManagementSystem.Models;
 
+/// <summary>Role names stored on <see cref="User.Role"/>.</summary>
+public static class UserRoles
+{
+    public const string User = "User";
+    public const string Admin = "Admin";
+}
+
 /// <summary>Application user account.</summary>
 public class User
 {
@@ -11,6 +18,14 @@ public class User
     public string Currency { get; set; } = "USD";
     public string PasswordHash { get; set; } = string.Empty;
     public string PasswordSalt { get; set; } = string.Empty;
+
+    /// <summary>Access role: "User" (regular account, default) or "Admin" (can reach the Admin Console).</summary>
+    public string Role { get; set; } = UserRoles.User;
+
+    /// <summary>Whether the account can sign in. Deactivated accounts keep their records
+    /// but cannot log in — an admin can reactivate them at any time.</summary>
+    public bool IsActive { get; set; } = true;
+
     /// <summary>Profile picture as a data URI (uploaded from Settings); null shows the initials avatar.</summary>
     public string? ProfileImage { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;

@@ -21,7 +21,7 @@
                     <label asp-for="Category" class="form-label">Category</label>
                     <select asp-for="Category" class="form-select">
                         <option value="">Choose a category…</option>
-                        @foreach (var category in Catalog.ExpenseCategories)
+                        @foreach (var category in (IReadOnlyList<string>?)ViewBag.Categories ?? Catalog.ExpenseCategories)
                         {
                             <option value="@category" selected="@(category == Model.Category)">@category</option>
                         }
@@ -78,7 +78,7 @@
                                     data-start="@option.Start.ToString("yyyy-MM-dd")"
                                     data-end="@option.End.ToString("yyyy-MM-dd")"
                                     selected="@(Model.BudgetId == option.Id || (Model.Id == 0 && option.IsMatch))">
-                                @option.Category · @option.Period (@option.Start.ToString("MMM d") – @option.End.ToString("MMM d"))
+                                @option.Category · @option.Start.ToString("MMM d, yyyy") – @option.End.ToString("MMM d, yyyy")
                             </option>
                         }
                     </select>

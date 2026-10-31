@@ -3,6 +3,26 @@
     var cur = Model.Currency;
 }
 
+@* Totals grouped by deduction period: every card sums expenses whose
+   chosen income pool matches the period. The sums are the same shared
+   computation the Income page's remaining-balance cards subtract, so the
+   totals here always stay in sync, and adding/editing/deleting an
+   expense updates them on the next page load. Expenses with no income
+   pool (records saved before pools existed) belong to no card. *@
+<section class="kpi-grid mb-3" id="expense-pool-cards">
+    @foreach (var pool in Model.PoolBreakdown)
+    {
+        <article class="kpi">
+            <div class="kpi-head">
+                <span class="kpi-icon @pool.Tint"><svg class="ico"><use href="#i-wallet"/></svg></span>
+                <span class="kpi-label">@(pool.Label) deduction total</span>
+            </div>
+            <div class="kpi-value">@Format.Money(pool.Spent, cur)</div>
+            <div class="kpi-foot">@pool.Count record@(pool.Count == 1 ? "" : "s") deducted from @(pool.Label.ToLower()) income</div>
+        </article>
+    }
+</section>
+
 <section class="kpi-grid mb-3">
     <article class="kpi">
         <div class="kpi-head">

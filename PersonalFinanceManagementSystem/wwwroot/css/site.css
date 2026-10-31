@@ -939,8 +939,10 @@ a { text-decoration: none; }
 .fin-dp-day.is-out { color: #cbd5e1; }
 .fin-dp-day.is-out:hover { background: var(--bg); color: var(--muted); }
 .fin-dp-day.is-today { box-shadow: inset 0 0 0 1.5px var(--brand); }
-.fin-dp-day.is-selected { background: var(--brand); color: #fff; font-weight: 600; }
-.fin-dp-day.is-selected:hover { background: var(--brand-2); }
+.fin-dp-day.is-selected { background: var(--brand); color: #fff; font-weight: 600; }    .fin-dp-day.is-selected:hover { background: var(--brand-2); }
+    /* Days before the picked Start Date are not selectable in the End Date calendar. */
+    .fin-dp-day.is-disabled { color: #cbd5e1; cursor: not-allowed; background: none; }
+    .fin-dp-day.is-disabled:hover { background: none; color: #cbd5e1; }
 
 .fin-dp-foot {
     display: flex;
@@ -1614,5 +1616,102 @@ a.pager-btn:hover { background: #f4f6f9; border-color: #cbd5e1; color: var(--ink
     .list-search { flex: 1 1 100%; }
     .pager { padding: 12px 16px; }
     .pager-pages { margin-left: 0; }
+}
+
+/* ============================================================
+   ADMIN CONSOLE — extends the shared design system, changes nothing
+   ============================================================ */
+
+/* Sidebar look: indigo accent shared with the admin chips. */
+.admin-shell .brand-logo-admin { background: color-mix(in srgb, #6366f1 14%, white); color: #6366f1; }
+.admin-shell .nav-link-fin.active { color: #6366f1; background: color-mix(in srgb, #6366f1 10%, white); }
+.admin-shell .nav-link-fin.active svg { color: #6366f1; }
+
+.nav-link-secondary { color: var(--ink-2); }
+.nav-link-danger { color: #dc2626; width: 100%; border: 0; background: none; text-align: left; }
+.sidebar-bottom .nav-link-fin.rtl-fix, .sidebar-bottom form { width: 100%; }
+.sidebar-bottom .nav-link-fin { width: 100%; }
+
+/* Admin chips: role / console stamp. */
+.chip-admin {
+    background: color-mix(in srgb, #6366f1 12%, white);
+    color: #4f46e5;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.chip-success { background: color-mix(in srgb, #10b981 14%, white); color: #047857; display: inline-flex; align-items: center; gap: 6px; }
+.chip-warning { background: color-mix(in srgb, #f59e0b 16%, white); color: #b45309; display: inline-flex; align-items: center; gap: 6px; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.chip .dot-green { background: #10b981; }
+.chip-chip-sm { display: inline-flex; }
+
+/* Filter segments used above admin tables. */
+.nav-segments { list-style: none; display: flex; gap: 4px; margin: 0; padding: 4px; background: #f4f6f9; border-radius: 10px; }
+.nav-segments a { display: inline-block; padding: 5px 12px; border-radius: 7px; font-size: .82rem; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+.nav-segments a.active { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgb(15 23 42 / .08); }
+
+/* Account cell on admin tables. */
+.user-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.user-cell-text, .user-cell-name, .user-cell-sub { display: block; min-width: 0; }
+.user-cell-name { font-weight: 600; color: var(--ink); font-size: .88rem; }
+.user-cell-sub { font-size: .78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Detail list on the account page. */
+.detail-list { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.detail-list > div { display: flex; justify-content: space-between; gap: 12px; font-size: .85rem; }
+.detail-list dt { color: var(--muted); font-weight: 500; }
+.detail-list dd { margin: 0; color: var(--ink); font-weight: 600; text-align: right; }
+.fin-hr { border-color: #eef1f5; margin: 16px 0; }
+
+/* Mini stat boxes (account data summary). */
+.mini-box { background: #f8fafc; border: 1px solid #eef1f5; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.mini-box-value { font-size: 1.35rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mini-box-label { font-size: .78rem; color: var(--muted); font-weight: 500; }
+
+/* Simple bar charts (admin dashboard / reports), tooltip via data-tooltip. */
+.chart-bars { display: flex; align-items: stretch; gap: 10px; min-height: 180px; padding-top: 6px; }
+.chart-bar-col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; }
+.chart-bar-val { font-size: .75rem; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.chart-bar-track { flex: 1 1 auto; width: 100%; max-width: 46px; display: flex; align-items: flex-end; justify-content: center; background: #f4f6f9; border-radius: 8px 8px 4px 4px; min-height: 110px; }
+.chart-bar-fill { display: block; width: 100%; border-radius: 8px 8px 2px 2px; background: var(--brand-2); min-height: 3px; }
+.chart-bar-fill.tint-green { background: #10b981; }
+.chart-bar-fill.tint-amber { background: #f59e0b; }
+.chart-bar-label { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+
+/* Module rows (records overview list). */
+.module-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; text-decoration: none; }
+a.module-row:hover { background: #f8fafc; }
+.module-row + .module-row { margin-top: 2px; }
+.module-dot {
+    width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center;
+    border-radius: 8px; font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+}
+.module-name { flex: 1 1 auto; font-size: .86rem; color: var(--ink); }
+.module-count { font-weight: 700; font-size: .88rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Recent activity lists (dashboard, account page). */
+.activity-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.activity-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 4px; }
+.activity-item + .activity-item { border-top: 1px solid #f1f4f8; }
+.activity-dot {
+    width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 50%;
+}
+.activity-dot.tint-sky { background: color-mix(in srgb, #0ea5e9 14%, white); color: #0369a1; }
+.activity-dot.tint-amber { background: color-mix(in srgb, #f59e0b 14%, white); color: #b45309; }
+.activity-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.activity-title { font-size: .86rem; font-weight: 600; color: var(--ink); }
+.activity-detail { font-size: .78rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Activity log filter row. */
+.log-filters { padding: 10px 16px; border-bottom: 1px solid #f1f4f8; display: flex; align-items: center; }
+
+/* Password input with a trailing visibility toggle (admin forms). */
+.pw-field { position: relative; }
+.pw-field .form-control { padding-right: 42px; }
+.pw-field .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--muted); padding: 4px; }
+
+@media (max-width: 991.98px) {
+    .chart-bars { overflow-x: auto; scrollbar-width: none; }
+    .chart-bars::-webkit-scrollbar { display: none; }
+    .chart-bar-col { min-width: 48px; }
 }
 

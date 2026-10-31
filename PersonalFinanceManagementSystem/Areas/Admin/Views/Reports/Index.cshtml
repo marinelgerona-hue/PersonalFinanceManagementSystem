@@ -1,0 +1,182 @@
+@model AdminReportViewModel
+@{
+    var maxSignups = Math.Max(1, Model.SignupsPerMonth.Max(m => m.Count));
+    var maxActivity = Math.Max(1, Model.ActivityPerMonth.Max(m => m.Count));
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="page-sub mb-0">System-wide statistics across every account — updated live</div>
+    <a class="btn btn-fin" asp-action="Export"><svg class="ico-sm"><use href="#i-download"/></svg> Export report</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-users"/></svg></span>
+            <div>
+                <div class="stat-label">Registered users</div>
+                <div class="stat-value">@Model.TotalUsers</div>
+                <div class="stat-foot">@Model.TotalAdmins admin · @Model.ActiveUsers active · @Model.InactiveUsers deactivated</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            <div>
+                <div class="stat-label">Income records</div>
+                <div class="stat-value">@Format.Number(Model.TotalIncomeRecords)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div>
+                <div class="stat-label">Expense records</div>
+                <div class="stat-value">@Format.Number(Model.TotalExpenseRecords)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-activity"/></svg></span>
+            <div>
+                <div class="stat-label">Today's log entries</div>
+                <div class="stat-value">@Format.Number(Model.ActivityEntriesToday)</div>
+                <div class="stat-foot">@Format.Number(Model.TotalActivityEntries) in total</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Registrations by month</h2>
+                    <div class="card-sub">Last 12 months</div>
+                </div>
+                <span class="chip chip-muted">@Model.NewUsersThisMonth this month</span>
+            </div>
+            <div class="card-body-fin">
+                <div class="chart-bars">
+                    @foreach (var m in Model.SignupsPerMonth)
+                    {
+                        var pct = (int)Math.Round(100.0 * m.Count / maxSignups);
+                        <a class="chart-bar-col" href="#" tabindex="-1" onclick="return false;"
+                           data-tooltip="@ChartTip.Build(m.Label,
+                               ("New users", $"{m.Count}", m.Count > 0 ? "#10b981" : "#94a3b8"))">
+                            <span class="chart-bar-val">@m.Count</span>
+                            <span class="chart-bar-track"><span class="chart-bar-fill @(m.Count > 0 ? "tint-green" : "")" style="height:@Math.Max(pct, m.Count > 0 ? 6 : 0)%"></span></span>
+                            <span class="chart-bar-label">@m.Label</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Activity by month</h2>
+                    <div class="card-sub">Audit-trail entries, last 6 months</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                <div class="chart-bars">
+                    @foreach (var m in Model.ActivityPerMonth)
+                    {
+                        var pct = (int)Math.Round(100.0 * m.Count / maxActivity);
+                        <a class="chart-bar-col" href="#" tabindex="-1" onclick="return false;"
+                           data-tooltip="@ChartTip.Build(m.Label,
+                               ("Log entries", $"{m.Count}", m.Count > 0 ? "#f59e0b" : "#94a3b8"))">
+                            <span class="chart-bar-val">@m.Count</span>
+                            <span class="chart-bar-track"><span class="chart-bar-fill @(m.Count > 0 ? "tint-amber" : "")" style="height:@Math.Max(pct, m.Count > 0 ? 6 : 0)%"></span></span>
+                            <span class="chart-bar-label">@m.Label</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">User growth table</h2>
+                    <div class="card-sub">New accounts per month and the running total</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                <div class="table-responsive">
+                    <table class="fin-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-end">New users</th>
+                                <th class="text-end">Total users (to date)</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in Model.UserGrowth)
+                            {
+                                <tr>
+                                    <td>@Format.MonthName(g.Month) @g.Year</td>
+                                    <td class="text-end">@(g.NewUsers == 0 ? "—" : Format.Number(g.NewUsers))</td>
+                                    <td class="text-end">@Format.Number(g.TotalUsersToDate)</td>
+                                    <td>
+                                        <div class="progress-track" tabindex="0" data-tooltip="@ChartTip.Build($"{Format.MonthName(g.Month)} {g.Year}", ("Total users (to date)", $"{g.TotalUsersToDate}", "#10b981"))">
+                                            <div class="progress-fill" style="width:@Format.Pct(Model.TotalUsers == 0 ? 0 : 100.0 * g.TotalUsersToDate / Model.TotalUsers)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Stored data</h2>
+                    <div class="card-sub">All records currently in the system</div>
+                </div>
+            </div>
+            <div class="card-body-fin d-flex flex-column gap-1">
+                <div class="module-row">
+                    <span class="module-dot bg-warning-subtle text-warning-emphasis">BU</span>
+                    <span class="module-name">Budgets</span>
+                    <span class="module-count">@Format.Number(Model.TotalBudgets)</span>
+                </div>
+                <div class="module-row">
+                    <span class="module-dot bg-info-subtle text-info-emphasis">GO</span>
+                    <span class="module-name">Savings goals</span>
+                    <span class="module-count">@Format.Number(Model.TotalGoals)</span>
+                </div>
+                <div class="module-row">
+                    <span class="module-dot bg-secondary-subtle text-secondary-emphasis">RC</span>
+                    <span class="module-name">Recurring definitions</span>
+                    <span class="module-count">@Format.Number(Model.TotalRecurringDefinitions)</span>
+                </div>
+                <div class="module-row">
+                    <span class="module-dot bg-dark-subtle text-dark-emphasis">LG</span>
+                    <span class="module-name">Activity log entries</span>
+                    <span class="module-count">@Format.Number(Model.TotalActivityEntries)</span>
+                </div>
+            </div>
+            <div class="px-3 pb-3 pt-2 small text-muted">
+                Individual users' financial record contents stay private — reports work with counts and system-wide totals only.
+            </div>
+        </div>
+    </div>
+</div>

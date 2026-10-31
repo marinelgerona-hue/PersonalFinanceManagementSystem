@@ -16,7 +16,12 @@ public class SettingsController : AppControllerBase
     /// <summary>Name prefix of the change-password form fields.</summary>
     public const string PasswordFormPrefix = "changePassword";
 
-    public SettingsController(IAuthService auth) : base(auth) { }
+    private readonly IActivityLogger _activity;
+
+    public SettingsController(IAuthService auth, IActivityLogger activity) : base(auth)
+    {
+        _activity = activity;
+    }
 
     public IActionResult Index()
     {
@@ -43,6 +48,8 @@ public class SettingsController : AppControllerBase
         }
 
         RefreshCurrentUser();
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Profile updated",
+            $"Updated profile details (name: {model.FullName}, email: {model.Email}).");
         TempData["ToastTitle"] = "Settings saved";
         TempData["Success"] = "Your profile and preferences are up to date.";
         return RedirectToTab(returnTab == "preferences" ? "preferences" : "profile");
@@ -66,6 +73,8 @@ public class SettingsController : AppControllerBase
             return View("Index", BuildModel());
         }
 
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Password changed",
+            "Changed account password from Settings.");
         TempData["ToastTitle"] = "Password updated";
         TempData["Success"] = "Use your new password the next time you sign in.";
         return RedirectToTab("change-password");

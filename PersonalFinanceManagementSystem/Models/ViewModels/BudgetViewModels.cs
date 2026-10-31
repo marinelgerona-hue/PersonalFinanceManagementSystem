@@ -21,45 +21,24 @@ public class BudgetFormViewModel
     [Display(Name = "Limit")]
     public decimal Limit { get; set; }
 
-    [Range(2000, 2100)]
-    public int Year { get; set; } = DateTime.Now.Year;
-
-    [Range(1, 12)]
-    public int Month { get; set; } = DateTime.Now.Month;
-
-    /// <summary>Budget period: daily, weekly, monthly or yearly. Defaults to
-    /// monthly so existing budgets keep the behaviour they always had.</summary>
-    public BudgetPeriod Period { get; set; } = BudgetPeriod.Monthly;
-
-    /// <summary>Anchor day for daily and weekly budgets (1-31). For weekly
-    /// budgets, Year/Month/Day is the day the budget week starts. Ignored
-    /// for monthly and yearly periods.</summary>
-    [Range(1, 31)]
-    public int Day { get; set; } = 1;
-
-    /// <summary>Convenience picker for daily and weekly budgets: the date
-    /// the budget covers (daily) or the day its week starts (weekly).
-    /// Fills Year/Month/Day, never stored itself.</summary>
+    /// <summary>First date (inclusive) the budget covers.</summary>
+    [Required(ErrorMessage = "Please choose a start date.")]
     [DataType(DataType.Date)]
-    public DateTime? AnchorDate { get; set; }
+    public DateTime StartDate { get; set; } = DateTime.Today;
 
-    /// <summary>Labels for the period dropdown (shared with the expense form).</summary>
-    public static List<(BudgetPeriod Period, string Label)> PeriodLabels { get; } = new()
-    {
-        (BudgetPeriod.Monthly, "Monthly"),
-        (BudgetPeriod.Daily, "Daily"),
-        (BudgetPeriod.Weekly, "Weekly"),
-        (BudgetPeriod.Yearly, "Yearly")
-    };
+    /// <summary>Last date (inclusive) the budget covers. Must be on or
+    /// after StartDate (checked in the controller).</summary>
+    [Required(ErrorMessage = "Please choose an end date.")]
+    [DataType(DataType.Date)]
+    public DateTime EndDate { get; set; } = DateTime.Today;
 }
 
 /// <summary>One budget shown as a choice in the Add Expense form. Carries the
-/// period window so the browser can filter options as category/date change.</summary>
+/// date window so the browser can filter options as category/date change.</summary>
 public class BudgetOption
 {
     public int Id { get; set; }
     public string Category { get; set; } = string.Empty;
-    public BudgetPeriod Period { get; set; }
 
     /// <summary>Inclusive first/last date the budget covers.</summary>
     public DateTime Start { get; set; }

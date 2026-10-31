@@ -21,7 +21,7 @@
                     <label asp-for="Source" class="form-label">Income source</label>
                     <select asp-for="Source" class="form-select">
                         <option value="">Choose a source…</option>
-                        @foreach (var source in Catalog.IncomeSources)
+                        @foreach (var source in (IReadOnlyList<string>?)ViewBag.Sources ?? Catalog.IncomeSources)
                         {
                             <option value="@source" selected="@(source == Model.Source)">@source</option>
                         }

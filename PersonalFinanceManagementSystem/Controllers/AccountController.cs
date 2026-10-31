@@ -66,7 +66,15 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Login successful — the dashboard greets the user, so no toast is needed here.
+        // Login successful.
+        // Admins land in the Admin Console; regular users stay on their dashboard.
+        var signedIn = _auth.GetCurrentUser(HttpContext);
+        if (signedIn is not null && signedIn.Role == UserRoles.Admin)
+        {
+            return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
+        }
+
+        // The dashboard greets the user, so no toast is needed here.
         return RedirectToAction(
             "Index",
             "Dashboard");

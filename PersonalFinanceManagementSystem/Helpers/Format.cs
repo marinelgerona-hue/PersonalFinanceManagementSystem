@@ -32,6 +32,9 @@ public static class Format
     public static string Money0(decimal amount, string? currency = "USD")
         => (amount < 0 ? "-" : "") + Symbol(currency) + Math.Abs(amount).ToString("N0", CultureInfo.InvariantCulture);
 
+    /// <summary>A count (records, users, …) with thousands separators, invariant culture.</summary>
+    public static string Number(long value) => value.ToString("N0", CultureInfo.InvariantCulture);
+
     /// <summary>Number formatted with invariant culture — safe to embed in CSS/SVG attributes.</summary>
     public static string Num(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 

@@ -6,12 +6,12 @@ using PersonalFinanceManagementSystem.Models.ViewModels;
 namespace PersonalFinanceManagementSystem.Services;
 
 /// <summary>
-/// CRUD for budgets with daily/weekly/monthly/yearly periods.
+/// CRUD for budgets with Start Date / End Date schedules.
 /// Spent is calculated live from the database on every read, so expenses
 /// added, edited or deleted are always reflected without any stored counter
 /// to get out of sync — which also prevents duplicate deductions: each
 /// expense counts for at most one budget (its assigned one, or a
-/// same-category budget whose period contains the expense date).
+/// same-category budget whose date range contains the expense date).
 /// </summary>
 public class BudgetService : IBudgetService
 {
@@ -26,31 +26,25 @@ public class BudgetService : IBudgetService
     {
         return _db.Budgets
             .Where(b => b.UserId == userId)
-            .ToList()
-            .OrderBy(b => b.PeriodStart) // computed property — sort in memory
+            .OrderBy(b => b.StartDate) // StartDate/EndDate are real columns now — sortable in SQL
             .ThenBy(b => b.Category)
             .ToList();
     }
 
     public List<Budget> GetForMonth(int userId, int year, int month)
     {
-        // Budgets whose period window touches this calendar month. A window
-        // never reaches further than one year past its anchor year, so a
-        // coarse database filter on the anchor year ± 1 is enough and the
-        // exact overlap is decided in memory.
-        var candidates = _db.Budgets
-            .Where(b =>
-                b.UserId == userId &&
-                b.Year + 1 >= year &&
-                b.Year - 1 <= year)
-            .ToList(); // PeriodStart/End are computed — not translatable to SQL
-
+        // Budgets whose Start Date / End Date window touches this calendar
+        // month. StartDate and EndDate are plain columns, so the overlap
+        // check translates to SQL directly.
         var monthStart = new DateTime(year, month, 1);
         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
 
-        return candidates
-            .Where(b => b.PeriodStart <= monthEnd && b.PeriodEnd >= monthStart)
-            .OrderBy(b => b.PeriodStart)
+        return _db.Budgets
+            .Where(b =>
+                b.UserId == userId &&
+                b.StartDate <= monthEnd &&
+                b.EndDate >= monthStart)
+            .OrderBy(b => b.StartDate)
             .ThenBy(b => b.Category)
             .ToList();
     }
@@ -65,17 +59,13 @@ public class BudgetService : IBudgetService
 
     public string Add(Budget budget)
     {
-        // Same category, same period and the same anchor: month for monthly,
-        // plus day for daily/weekly, just the year for yearly. Written with
-        // plain columns so EF can translate it to SQL.
+        // Same category whose date window overlaps the new budget's window.
+        // Both bounds are plain columns, so this stays translatable to SQL.
         var duplicate = _db.Budgets.Any(b =>
             b.UserId == budget.UserId &&
             b.Category.ToLower() == budget.Category.ToLower() &&
-            b.Period == budget.Period &&
-            b.Year == budget.Year &&
-            (budget.Period == BudgetPeriod.Yearly ||
-                (b.Month == budget.Month &&
-                 (budget.Period == BudgetPeriod.Monthly || b.Day == budget.Day))));
+            b.StartDate <= budget.EndDate &&
+            b.EndDate >= budget.StartDate);
 
         if (duplicate)
         {
@@ -105,11 +95,8 @@ public class BudgetService : IBudgetService
             b.UserId == budget.UserId &&
             b.Id != budget.Id &&
             b.Category.ToLower() == budget.Category.ToLower() &&
-            b.Period == budget.Period &&
-            b.Year == budget.Year &&
-            (budget.Period == BudgetPeriod.Yearly ||
-                (b.Month == budget.Month &&
-                 (budget.Period == BudgetPeriod.Monthly || b.Day == budget.Day))));
+            b.StartDate <= budget.EndDate &&
+            b.EndDate >= budget.StartDate);
 
         if (duplicate)
         {
@@ -118,10 +105,8 @@ public class BudgetService : IBudgetService
 
         existing.Category = budget.Category;
         existing.Limit = budget.Limit;
-        existing.Year = budget.Year;
-        existing.Month = budget.Month;
-        existing.Period = budget.Period;
-        existing.Day = budget.Day;
+        existing.StartDate = budget.StartDate;
+        existing.EndDate = budget.EndDate;
 
         _db.SaveChanges();
 
@@ -140,7 +125,7 @@ public class BudgetService : IBudgetService
             return false;
         }
 
-        // Expenses pointed at this budget fall back to category + period
+        // Expenses pointed at this budget fall back to category + date-range
         // matching again, so their amounts stay deducted from whichever
         // budget still covers them instead of dangling off a deleted row.
         var linked = _db.Expenses.Where(e => e.BudgetId == id);
@@ -168,10 +153,10 @@ public class BudgetService : IBudgetService
         }
 
         // One expense query over the widest window span; each budget's
-        // spent amount is then matched in memory against its own period.
-        var from = budgets.Min(b => b.PeriodStart);
-        var to = budgets.Max(b => b.PeriodEnd);
-        var toExclusive = to.AddDays(1);
+        // spent amount is then matched in memory against its own range.
+        var from = budgets.Min(b => b.StartDate);
+        var to = budgets.Max(b => b.EndDate);
+        var toExclusive = to.Date.AddDays(1);
 
         var expenses = _db.Expenses
             .Where(e =>
@@ -202,19 +187,18 @@ public class BudgetService : IBudgetService
     {
         var dateValue = date.Date;
 
-        // All budgets of the same category anchored around the expense date;
-        // the period-window check happens in memory. The most specific period
-        // wins (smallest window), ties go to the latest period start.
+        // All budgets of the same category whose window contains the expense
+        // date (straight SQL — StartDate/EndDate are columns). The most
+        // specific window wins (smallest span), ties go to the latest start.
         return _db.Budgets
             .Where(b =>
                 b.UserId == userId &&
                 b.Category.ToLower() == category.ToLower() &&
-                b.Year >= dateValue.Year - 1 &&
-                b.Year <= dateValue.Year + 1)
+                b.StartDate <= dateValue &&
+                b.EndDate >= dateValue)
             .ToList()
-            .Where(b => b.Covers(dateValue))
-            .OrderBy(b => PeriodSpan(b.Period))
-            .ThenByDescending(b => b.PeriodStart)
+            .OrderBy(b => b.EndDate.Subtract(b.StartDate).Days)
+            .ThenByDescending(b => b.StartDate)
             .FirstOrDefault();
     }
 
@@ -223,16 +207,9 @@ public class BudgetService : IBudgetService
         string? category,
         DateTime date)
     {
-        var now = DateTime.Now;
-        var dateValue = date.Date;
-
         var candidates = _db.Budgets
-            .Where(b =>
-                b.UserId == userId &&
-                b.Year >= now.Year - 1 &&
-                b.Year <= now.Year + 1)
-            .ToList()
-            .OrderBy(b => b.PeriodStart)
+            .Where(b => b.UserId == userId)
+            .OrderBy(b => b.StartDate)
             .ThenBy(b => b.Category)
             .ToList();
 
@@ -241,40 +218,30 @@ public class BudgetService : IBudgetService
             {
                 Id = b.Id,
                 Category = b.Category,
-                Period = b.Period,
-                Start = b.PeriodStart,
-                End = b.PeriodEnd,
+                Start = b.StartDate,
+                End = b.EndDate,
                 IsMatch = !string.IsNullOrEmpty(category)
                     && b.Category.Equals(category, StringComparison.OrdinalIgnoreCase)
-                    && b.Covers(dateValue)
+                    && b.Covers(date)
             })
             .ToList();
     }
 
     // ------------------------------------------------------------ internals
 
-    /// <summary>Total number of days a budget period covers, used to pick the
-    /// most specific budget when several windows contain the same date.</summary>
-    private static int PeriodSpan(BudgetPeriod period) => period switch
-    {
-        BudgetPeriod.Daily => 1,
-        BudgetPeriod.Weekly => 7,
-        BudgetPeriod.Yearly => 366,
-        _ => 31 // Monthly
-    };
-
     /// <summary>
     /// Whether an expense is deducted from a budget: same category, inside
-    /// the budget's period window, and — the duplicate-deduction guard —
-    /// either unassigned (falls in by category and period) or assigned to
+    /// the budget's Start Date / End Date window, and — the duplicate-
+    /// deduction guard — either unassigned (falls in by category and date)
+    /// or assigned to
     /// this very budget. An expense assigned to a different budget of the
     /// same category is never counted twice.
     /// </summary>
     private static bool Counts(Budget budget, Expense expense)
     {
         return expense.Category.Equals(budget.Category, StringComparison.OrdinalIgnoreCase)
-            && expense.Date.Date >= budget.PeriodStart
-            && expense.Date.Date <= budget.PeriodEnd
+            && expense.Date.Date >= budget.StartDate.Date
+            && expense.Date.Date <= budget.EndDate.Date
             && (expense.BudgetId is null || expense.BudgetId == budget.Id);
     }
 }

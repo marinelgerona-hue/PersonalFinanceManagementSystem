@@ -8,7 +8,7 @@
     <div class="card-head">
         <div>
             <h2 class="card-title">Budget details</h2>
-            <div class="card-sub">Set a spending limit for one category over a budget period</div>
+            <div class="card-sub">Set a spending limit for one category between a start and end date</div>
         </div>
     </div>
 
@@ -22,7 +22,7 @@
                     <label asp-for="Category" class="form-label">Category</label>
                     <select asp-for="Category" class="form-select">
                         <option value="">Choose a category…</option>
-                        @foreach (var category in Catalog.ExpenseCategories)
+                        @foreach (var category in (IReadOnlyList<string>?)ViewBag.Categories ?? Catalog.ExpenseCategories)
                         {
                             <option value="@category" selected="@(category == Model.Category)">@category</option>
                         }
@@ -48,55 +48,44 @@
                     <span asp-validation-for="Limit" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6 col-xl-4">
-                    <label asp-for="Period" class="form-label">Budget period</label>
-                    <select asp-for="Period" id="periodSelect" class="form-select" onchange="updatePeriodFields()">
-                        <option value="@BudgetPeriod.Monthly" selected="@(Model.Period == BudgetPeriod.Monthly)">Monthly</option>
-                        <option value="@BudgetPeriod.Daily" selected="@(Model.Period == BudgetPeriod.Daily)">Daily</option>
-                        <option value="@BudgetPeriod.Weekly" selected="@(Model.Period == BudgetPeriod.Weekly)">Weekly</option>
-                        <option value="@BudgetPeriod.Yearly" selected="@(Model.Period == BudgetPeriod.Yearly)">Yearly</option>
-                    </select>
-                    <span asp-validation-for="Period" class="text-danger small"></span>
-                </div>
-                <div class="col-md-6 col-xl-4 period-field" data-show="Monthly" id="monthField">
-                    <label asp-for="Month" class="form-label">Month</label>
-                    <select asp-for="Month" class="form-select">
-                        @for (var m = 1; m <= 12; m++)
-                        {
-                            <option value="@m" selected="@(m == Model.Month)">@Format.MonthName(m)</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Month" class="text-danger small"></span>
-                </div>
-                <div class="col-md-6 col-xl-4 period-field" data-show="Yearly Monthly" id="yearField">
-                    <label asp-for="Year" class="form-label">Year</label>
-                    <select asp-for="Year" class="form-select">
-                        @for (var y = now.Year - 4; y <= now.Year + 2; y++)
-                        {
-                            <option value="@y" selected="@(y == Model.Year)">@y</option>
-                        }
-                    </select>
-                    <span asp-validation-for="Year" class="text-danger small"></span>
-                </div>
-                <div class="col-md-6 col-xl-4 period-field" data-show="Daily Weekly" id="anchorField">
-                    <label id="anchorDateLabel" for="anchorDateDisplay" class="form-label">@(Model.Period == BudgetPeriod.Weekly ? "Week starts on" : "Budget date")</label>
+                    <label asp-for="StartDate" class="form-label">Start Date</label>
 
                     @* Popup calendar (styles in site.css .fin-dp-*). The hidden
                        input keeps the canonical yyyy-MM-dd value the server
                        binds; the readonly display field and the popup show it. *@
                     <div class="fin-dp">
-                        <input type="hidden" asp-for="AnchorDate" />
-                        <div class="fin-dp-field" id="anchorDpField">
-                            <input type="text" id="anchorDateDisplay" class="form-control" placeholder="Pick a date…" readonly />
-                            <button type="button" class="fin-dp-clear" id="anchorDpClear" title="Clear date" hidden>✕</button>
-                            <button type="button" class="fin-dp-icon-btn" id="anchorDpToggle" aria-label="Open calendar">
+                        <input type="hidden" asp-for="StartDate" />
+                        <div class="fin-dp-field" data-fin-dp-field>
+                            <input type="text" class="form-control" placeholder="Pick a date…" readonly />
+                            <button type="button" class="fin-dp-clear" data-fin-dp-clear title="Clear date" hidden>✕</button>
+                            <button type="button" class="fin-dp-icon-btn" data-fin-dp-toggle aria-label="Open calendar">
                                 <svg class="ico"><use href="#i-calendar"/></svg>
                             </button>
                         </div>
-                        <div class="fin-dp-panel" id="anchorDpPanel" hidden></div>
+                        <div class="fin-dp-panel" data-fin-dp-panel hidden></div>
                     </div>
 
-                    <span asp-validation-for="AnchorDate" class="text-danger small"></span>
-                    <div class="form-text small">@(Model.Period == BudgetPeriod.Weekly ? "The budget covers the 7 days from this date." : "The budget covers this single day.")</div>
+                    <span asp-validation-for="StartDate" class="text-danger small"></span>
+                    <div class="form-text small">First day the budget covers.</div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="EndDate" class="form-label">End Date</label>
+
+                    @* Same popup calendar pattern as Start Date. *@
+                    <div class="fin-dp">
+                        <input type="hidden" asp-for="EndDate" />
+                        <div class="fin-dp-field" data-fin-dp-field>
+                            <input type="text" class="form-control" placeholder="Pick a date…" readonly />
+                            <button type="button" class="fin-dp-clear" data-fin-dp-clear title="Clear date" hidden>✕</button>
+                            <button type="button" class="fin-dp-icon-btn" data-fin-dp-toggle aria-label="Open calendar">
+                                <svg class="ico"><use href="#i-calendar"/></svg>
+                            </button>
+                        </div>
+                        <div class="fin-dp-panel" data-fin-dp-panel hidden></div>
+                    </div>
+
+                    <span asp-validation-for="EndDate" class="text-danger small"></span>
+                    <div class="form-text small">Last day the budget covers.</div>
                 </div>
             </div>
             <div class="form-actions">
@@ -109,8 +98,7 @@
 
 @* The custom category field appears only while "Other" is picked in the
    category select; the typed value is saved as the budget category —
-   matching the same field in the expense form. The budget-filter scripts
-   below are untouched. *@
+   matching the same field in the expense form. *@
 <script>
 (function () {
     var categorySelect = document.getElementById('Category');
@@ -133,36 +121,14 @@
 })();
 </script>
 
-<script>
-    // The select posts the enum's numeric value; map it to the field names.
-    var names = { 0: 'Monthly', 1: 'Daily', 2: 'Weekly', 3: 'Yearly' };
-
-    function updatePeriodFields() {
-        var period = names[document.getElementById('periodSelect').value];
-        document.querySelectorAll('.period-field').forEach(function (field) {
-            field.style.display = field.dataset.show.includes(period) ? '' : 'none';
-        });
-        var anchorLabel = document.getElementById('anchorDateLabel');
-        if (anchorLabel) anchorLabel.textContent = period === 'Weekly' ? 'Week starts on' : 'Budget date';
-    }
-
-    updatePeriodFields();
-</script>
-
-@* Popup calendar for the budget date / week-start field. Pure JS + the
-   .fin-dp-* styles. Selecting a day writes yyyy-MM-dd into the hidden
-   AnchorDate input (what the server binds — the daily/weekly period fold
-   in the controller is unchanged); the display field shows the pretty date. *@
+@* Popup calendars for the Start Date / End Date fields. Pure JS + the
+   .fin-dp-* styles, initialized for both fields. Selecting a day writes
+   yyyy-MM-dd into the hidden input (what the server binds); the display
+   field shows the pretty date. The fields are linked: days before the
+   picked Start Date are disabled in the End Date calendar, and picking a
+   Start Date after the current End Date moves the End Date to it. *@
 <script>
 (function () {
-    var hidden   = document.getElementById('AnchorDate');
-    var field    = document.getElementById('anchorDpField');
-    var display  = document.getElementById('anchorDateDisplay');
-    var panel    = document.getElementById('anchorDpPanel');
-    var clearBtn = document.getElementById('anchorDpClear');
-    var wrapper  = panel ? panel.parentElement : null;
-    if (!hidden || !field || !display || !panel || !wrapper) return;
-
     var MONTHS   = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     var WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
     var today    = new Date();
@@ -182,124 +148,187 @@
         return MONTHS[date.getMonth()].slice(0, 3) + ' ' + date.getDate() + ', ' + date.getFullYear();
     }
 
-    var selected = parseVal(hidden.value);
-    var view     = { y: (selected || today).getFullYear(), m: (selected || today).getMonth() };
+    function createPicker(root, getMin, onOwnChange) {
+        var hidden   = root.querySelector('input[type="hidden"]');
+        var field    = root.querySelector('[data-fin-dp-field]');
+        var display  = field.querySelector('input[type="text"]');
+        var panel    = root.querySelector('[data-fin-dp-panel]');
+        var clearBtn = root.querySelector('[data-fin-dp-clear]');
+        // The wrapper that outside clicks are measured against.
+        var wrapper  = root;
 
-    function sameDay(a, b) {
-        return !!a && !!b && a.getFullYear() === b.getFullYear()
-            && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-    }
-
-    function render() {
-        var days = new Date(view.y, view.m + 1, 0).getDate();
-        var lead = new Date(view.y, view.m, 1).getDay();   // Sunday-first grid offset
-
-        var html = '<div class="fin-dp-head">'
-            + '<button type="button" class="fin-dp-nav" data-step-year="-1" title="Previous year">\u00ab</button>'
-            + '<button type="button" class="fin-dp-nav" data-step-month="-1" title="Previous month">\u2039</button>'
-            + '<div class="fin-dp-title">' + MONTHS[view.m] + ' ' + view.y + '</div>'
-            + '<button type="button" class="fin-dp-nav" data-step-month="1" title="Next month">\u203a</button>'
-            + '<button type="button" class="fin-dp-nav" data-step-year="1" title="Next year">\u00bb</button>'
-            + '</div>';
-
-        html += '<div class="fin-dp-week">'
-            + WEEKDAYS.map(function (w) { return '<span>' + w + '</span>'; }).join('')
-            + '</div><div class="fin-dp-grid">';
-
-        for (var i = 0; i < lead; i++) html += '<span></span>';
-
-        for (var day = 1; day <= days; day++) {
-            var d = new Date(view.y, view.m, day);
-            var cls = 'fin-dp-day';
-            if (sameDay(d, today)) cls += ' is-today';
-            if (sameDay(d, selected)) cls += ' is-selected';
-            html += '<button type="button" class="' + cls + '" data-date="' + toValue(d) + '">' + day + '</button>';
+        // The server renders the hidden input in the current culture
+        // (e.g. 10/31/2026 12:00:00 AM), not only ISO. Parse any format and
+        // normalize back to canonical yyyy-MM-dd so the server binds it.
+        function parseHidden() {
+            if (!hidden.value) return null;
+            var p = hidden.value.split('-');
+            if (p.length === 3 && !isNaN(+p[0])) return new Date(+p[0], +p[1] - 1, +p[2]);
+            var d = new Date(hidden.value);
+            return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
         }
 
-        html += '</div>';
-        html += '<div class="fin-dp-foot">'
-            + '<button type="button" class="fin-dp-today-btn" data-today="1">Today</button>'
-            + '<button type="button" class="fin-dp-done-btn" data-done="1">Done</button>'
-            + '</div>';
+        var selected = parseHidden();
+        if (selected) hidden.value = toValue(selected);
+        var view     = { y: (selected || today).getFullYear(), m: (selected || today).getMonth() };
 
-        panel.innerHTML = html;
-    }
-
-    function openPanel() {
-        view = selected
-            ? { y: selected.getFullYear(), m: selected.getMonth() }
-            : { y: today.getFullYear(), m: today.getMonth() };
-        render();
-        panel.hidden = false;
-    }
-
-    function closePanel() { panel.hidden = true; }
-
-    function setDate(date) {
-        selected = date;
-        hidden.value = toValue(date);
-        display.value = prettyDate(date);
-        clearBtn.hidden = false;
-        render();
-    }
-
-    function clearDate() {
-        selected = null;
-        hidden.value = '';
-        display.value = '';
-        clearBtn.hidden = true;
-        render();
-    }
-
-    field.addEventListener('click', function (e) {
-        if (e.target === clearBtn) return; // handled by its own listener
-        panel.hidden ? openPanel() : closePanel();
-    });
-
-    clearBtn.addEventListener('click', clearDate);
-
-    panel.addEventListener('click', function (e) {
-        var el = e.target;
-        while (el && el !== panel && !el.hasAttribute('data-date')
-               && !el.hasAttribute('data-step-month') && !el.hasAttribute('data-step-year')
-               && !el.hasAttribute('data-today') && !el.hasAttribute('data-done')) {
-            el = el.parentElement;
+        function sameDay(a, b) {
+            return !!a && !!b && a.getFullYear() === b.getFullYear()
+                && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
         }
-        if (!el || el === panel) return;
 
-        if (el.hasAttribute('data-date')) {
-            var p = el.getAttribute('data-date').split('-');
-            setDate(new Date(+p[0], +p[1] - 1, +p[2]));
-            closePanel();
-        } else if (el.hasAttribute('data-step-month')) {
-            var m = view.m + +el.getAttribute('data-step-month');
-            view.m = (m + 12) % 12;
-            view.y += Math.floor(m / 12);
+        // Earliest selectable day (End Date calendar only): the Start Date.
+        function minDate() { return getMin ? getMin() : null; }
+
+        // Called on this picker after its sibling changed: keep the
+        // schedule valid by moving the End Date onto the Start Date when
+        // it now falls before it, then re-render to refresh disabled days.
+        function onSiblingChanged() {
+            var min = minDate();
+            if (min && selected && selected < min) {
+                selected  = min;
+                hidden.value  = toValue(min);
+                display.value = prettyDate(min);
+                clearBtn.hidden = false;
+            }
             render();
-        } else if (el.hasAttribute('data-step-year')) {
-            view.y += +el.getAttribute('data-step-year');
-            render();
-        } else if (el.hasAttribute('data-today')) {
-            setDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
-            closePanel();
-        } else if (el.hasAttribute('data-done')) {
-            closePanel();
         }
-    });
 
-    document.addEventListener('mousedown', function (e) {
-        if (!panel.hidden && !wrapper.contains(e.target)) closePanel();
-    });
+        function render() {
+            var days = new Date(view.y, view.m + 1, 0).getDate();
+            var lead = new Date(view.y, view.m, 1).getDay();   // Sunday-first grid offset
+            var min  = minDate();
 
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !panel.hidden) closePanel();
-    });
+            var html = '<div class="fin-dp-head">'
+                + '<button type="button" class="fin-dp-nav" data-step-year="-1" title="Previous year">\u00ab</button>'
+                + '<button type="button" class="fin-dp-nav" data-step-month="-1" title="Previous month">\u2039</button>'
+                + '<div class="fin-dp-title">' + MONTHS[view.m] + ' ' + view.y + '</div>'
+                + '<button type="button" class="fin-dp-nav" data-step-month="1" title="Next month">\u203a</button>'
+                + '<button type="button" class="fin-dp-nav" data-step-year="1" title="Next year">\u00bb</button>'
+                + '</div>';
 
-    // Restore the display from the server-rendered value (edit mode).
-    if (selected) {
-        display.value = prettyDate(selected);
-        clearBtn.hidden = false;
+            html += '<div class="fin-dp-week">'
+                + WEEKDAYS.map(function (w) { return '<span>' + w + '</span>'; }).join('')
+                + '</div><div class="fin-dp-grid">';
+
+            for (var i = 0; i < lead; i++) html += '<span></span>';
+
+            for (var day = 1; day <= days; day++) {
+                var d = new Date(view.y, view.m, day);
+                var cls = 'fin-dp-day';
+                var disabled = !!min && d < min;   // before Start Date: not selectable
+                if (disabled) cls += ' is-disabled';
+                if (sameDay(d, today)) cls += ' is-today';
+                if (sameDay(d, selected)) cls += ' is-selected';
+                html += '<button type="button" class="' + cls + '" data-date="' + toValue(d) + '"'
+                    + (disabled ? ' disabled' : '') + '>' + day + '</button>';
+            }
+
+            html += '</div>';
+            html += '<div class="fin-dp-foot">'
+                + '<button type="button" class="fin-dp-today-btn" data-today="1">Today</button>'
+                + '<button type="button" class="fin-dp-done-btn" data-done="1">Done</button>'
+                + '</div>';
+
+            panel.innerHTML = html;
+        }
+
+        function openPanel() {
+            view = selected
+                ? { y: selected.getFullYear(), m: selected.getMonth() }
+                : { y: today.getFullYear(), m: today.getMonth() };
+            render();
+            panel.hidden = false;
+        }
+
+        function closePanel() { panel.hidden = true; }
+
+        function setDate(date) {
+            selected = date;
+            hidden.value = toValue(date);
+            display.value = prettyDate(date);
+            clearBtn.hidden = false;
+            render();
+            if (onOwnChange) onOwnChange(); // let the sibling react (link start -> end)
+        }
+
+        function clearDate() {
+            selected = null;
+            hidden.value = '';
+            display.value = '';
+            clearBtn.hidden = true;
+            render();
+            if (onOwnChange) onOwnChange();
+        }
+
+        field.addEventListener('click', function (e) {
+            if (e.target === clearBtn) return; // handled by its own listener
+            panel.hidden ? openPanel() : closePanel();
+        });
+
+        clearBtn.addEventListener('click', clearDate);
+
+        panel.addEventListener('click', function (e) {
+            var el = e.target;
+            while (el && el !== panel && !el.hasAttribute('data-date')
+                   && !el.hasAttribute('data-step-month') && !el.hasAttribute('data-step-year')
+                   && !el.hasAttribute('data-today') && !el.hasAttribute('data-done')) {
+                el = el.parentElement;
+            }
+            if (!el || el === panel) return;
+
+            if (el.hasAttribute('data-date')) {
+                var p = el.getAttribute('data-date').split('-');
+                setDate(new Date(+p[0], +p[1] - 1, +p[2]));
+                closePanel();
+            } else if (el.hasAttribute('data-step-month')) {
+                var m = view.m + +el.getAttribute('data-step-month');
+                view.m = (m + 12) % 12;
+                view.y += Math.floor(m / 12);
+                render();
+            } else if (el.hasAttribute('data-step-year')) {
+                view.y += +el.getAttribute('data-step-year');
+                render();
+            } else if (el.hasAttribute('data-today')) {
+                setDate(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+                closePanel();
+            } else if (el.hasAttribute('data-done')) {
+                closePanel();
+            }
+        });
+
+        document.addEventListener('mousedown', function (e) {
+            if (!panel.hidden && !wrapper.contains(e.target)) closePanel();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !panel.hidden) closePanel();
+        });
+
+        // Restore the display from the server-rendered value (edit mode).
+        if (selected) {
+            display.value = prettyDate(selected);
+            clearBtn.hidden = false;
+        }
+        render();
+
+        return { hiddenInput: hidden, onSiblingChanged: onSiblingChanged };
     }
-    render();
+
+    var roots = Array.prototype.slice.call(document.querySelectorAll('[data-fin-dp-field]'))
+        .map(function (field) { return field.parentElement; });
+    if (roots.length !== 2) return;
+
+    var startPicker, endPicker;
+
+    // When the Start Date changes, the End Date calendar re-renders with
+    // days before it disabled (and jumps forward if it now falls short).
+    startPicker = createPicker(roots[0], null, function () {
+        if (endPicker) endPicker.onSiblingChanged();
+    });
+
+    endPicker = createPicker(roots[1], function () {
+        return parseVal(startPicker.hiddenInput.value);
+    });
 })();
 </script>

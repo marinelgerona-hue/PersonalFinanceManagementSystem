@@ -105,7 +105,7 @@
                     {
                         <tr>
                             <td><span class="chip"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span></td>
-                            <td class="small text-muted">@b.Budget.Period</td>
+                            <td class="small text-muted">@b.Budget.StartDate.ToString("MMM d, yyyy") – @b.Budget.EndDate.ToString("MMM d, yyyy")</td>
                             <td class="text-end amount">@Format.Money(b.Budget.Limit, cur)</td>
                             <td class="text-end amount">@Format.Money(b.Spent, cur)</td>
                             <td class="text-end amount @(b.Remaining < 0 ? "neg" : "pos")">@Format.Money(b.Remaining, cur)</td>

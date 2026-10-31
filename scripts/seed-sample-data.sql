@@ -39,20 +39,20 @@ INSERT INTO Incomes (UserId, Source, Amount, Date, Note, Period) VALUES
   (@u, 'Salary', 5720.00, '2026-10-01', 'Monthly salary — Northwind Analytics', 2),
   (@u, 'Freelance', 720.00, '2026-10-09', 'Analytics consulting — 6 hours', 2);
 
--- Budgets (monthly, September and October)
-INSERT INTO Budgets (UserId, Category, `Limit`, Year, Month, Day, Period) VALUES
-  (@u, 'Groceries', 650.00, 2026, 9, 1, 0),
-  (@u, 'Dining', 250.00, 2026, 9, 1, 0),
-  (@u, 'Transportation', 220.00, 2026, 9, 1, 0),
-  (@u, 'Entertainment', 120.00, 2026, 9, 1, 0),
-  (@u, 'Shopping', 200.00, 2026, 9, 1, 0),
-  (@u, 'Utilities', 330.00, 2026, 9, 1, 0),
-  (@u, 'Groceries', 650.00, 2026, 10, 1, 0),
-  (@u, 'Dining', 250.00, 2026, 10, 1, 0),
-  (@u, 'Transportation', 220.00, 2026, 10, 1, 0),
-  (@u, 'Entertainment', 120.00, 2026, 10, 1, 0),
-  (@u, 'Shopping', 200.00, 2026, 10, 1, 0),
-  (@u, 'Utilities', 330.00, 2026, 10, 1, 0);
+-- Budgets (start/end date schedules, September and October)
+INSERT INTO Budgets (UserId, Category, `Limit`, StartDate, EndDate) VALUES
+  (@u, 'Groceries', 650.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Dining', 250.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Transportation', 220.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Entertainment', 120.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Shopping', 200.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Utilities', 330.00, '2026-09-01', '2026-09-30'),
+  (@u, 'Groceries', 650.00, '2026-10-01', '2026-10-31'),
+  (@u, 'Dining', 250.00, '2026-10-01', '2026-10-31'),
+  (@u, 'Transportation', 220.00, '2026-10-01', '2026-10-31'),
+  (@u, 'Entertainment', 120.00, '2026-10-01', '2026-10-31'),
+  (@u, 'Shopping', 200.00, '2026-10-01', '2026-10-31'),
+  (@u, 'Utilities', 330.00, '2026-10-01', '2026-10-31');
 
 -- Expenses (all deducted from the Monthly income period)
 INSERT INTO Expenses (UserId, Category, Amount, Date, Note, IncomePool) VALUES
@@ -174,8 +174,8 @@ INSERT INTO Expenses (UserId, Category, Amount, Date, Note, IncomePool) VALUES
 
 -- Link September/October expenses to the matching category budget
 UPDATE Expenses e JOIN Budgets b
-  ON b.UserId = e.UserId AND b.Category = e.Category AND b.Period = 0
- AND b.Year = YEAR(e.Date) AND b.Month = MONTH(e.Date)
+  ON b.UserId = e.UserId AND b.Category = e.Category
+ AND e.Date BETWEEN b.StartDate AND b.EndDate
 SET e.BudgetId = b.Id
 WHERE e.UserId = @u;
 

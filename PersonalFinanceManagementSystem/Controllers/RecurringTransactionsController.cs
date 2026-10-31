@@ -10,14 +10,17 @@ public class RecurringTransactionsController : AppControllerBase
 {
     private readonly IRecurringTransactionService _recurring;
     private readonly IBudgetService _budgets;
+    private readonly ICategoryService _categories;
 
     public RecurringTransactionsController(
         IAuthService auth,
         IRecurringTransactionService recurring,
-        IBudgetService budgets) : base(auth)
+        IBudgetService budgets,
+        ICategoryService categories) : base(auth)
     {
         _recurring = recurring;
         _budgets = budgets;
+        _categories = categories;
     }
 
     private static readonly Dictionary<string, Func<RecurringTransaction, object?>> Sorts = new()
@@ -78,7 +81,9 @@ public class RecurringTransactionsController : AppControllerBase
 
         if (!ModelState.IsValid)
         {
-            RestoreLabelForDisplay(model);
+            RestoreLabelForDisplay(model, model.Type == RecurringTransactionType.Expense
+                ? _categories.GetActive(CategoryType.Expense)
+                : _categories.GetActive(CategoryType.Income));
             ViewData["Title"] = "Add Recurring Transaction";
             ViewData["ActiveNav"] = "recurring";
             return View("RecurringTransactionForm", BuildForm(model));
@@ -114,8 +119,10 @@ public class RecurringTransactionsController : AppControllerBase
 
         ViewData["Title"] = "Edit Recurring Transaction";
         ViewData["ActiveNav"] = "recurring";
-        var catalog = item.Type == RecurringTransactionType.Expense ? Catalog.ExpenseCategories : Catalog.IncomeSources;
-        var isCustomLabel = !catalog.Contains(item.Label);
+        var catalog = item.Type == RecurringTransactionType.Expense
+            ? _categories.GetActive(CategoryType.Expense)
+            : _categories.GetActive(CategoryType.Income);
+        var isCustomLabel = !catalog.Contains(item.Label, StringComparer.OrdinalIgnoreCase);
 
         return View("RecurringTransactionForm", BuildForm(new RecurringTransactionFormViewModel
         {
@@ -148,7 +155,9 @@ public class RecurringTransactionsController : AppControllerBase
 
         if (!ModelState.IsValid)
         {
-            RestoreLabelForDisplay(model);
+            RestoreLabelForDisplay(model, model.Type == RecurringTransactionType.Expense
+                ? _categories.GetActive(CategoryType.Expense)
+                : _categories.GetActive(CategoryType.Income));
             ViewData["Title"] = "Edit Recurring Transaction";
             ViewData["ActiveNav"] = "recurring";
             return View("RecurringTransactionForm", BuildForm(model));
@@ -254,6 +263,13 @@ public class RecurringTransactionsController : AppControllerBase
 
     private RecurringTransactionFormViewModel BuildForm(RecurringTransactionFormViewModel model)
     {
+        // Admin-managed category catalog drives the dropdown; falls back to the built-in lists.
+        var expense = _categories.GetActive(CategoryType.Expense);
+        var income = _categories.GetActive(CategoryType.Income);
+        ViewBag.LabelOptions = model.Type == RecurringTransactionType.Expense ? expense : income;
+        ViewBag.ExpenseOptions = expense;
+        ViewBag.IncomeOptions = income;
+
         model.Budgets = model.Type == RecurringTransactionType.Expense
             ? _budgets.GetOptionsForExpense(CurrentUser.Id, model.Label, model.StartDate)
             : new List<BudgetOption>();
@@ -278,9 +294,8 @@ public class RecurringTransactionsController : AppControllerBase
         model.Label = custom;
     }
 
-    private static void RestoreLabelForDisplay(RecurringTransactionFormViewModel model)
+    private static void RestoreLabelForDisplay(RecurringTransactionFormViewModel model, IReadOnlyList<string> catalog)
     {
-        var catalog = model.Type == RecurringTransactionType.Expense ? Catalog.ExpenseCategories : Catalog.IncomeSources;
         if (model.CustomLabel is { } custom &&
             custom.Length > 0 &&
             !catalog.Contains(model.Label, StringComparer.OrdinalIgnoreCase) &&

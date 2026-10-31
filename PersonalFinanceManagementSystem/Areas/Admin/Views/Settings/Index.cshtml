@@ -1,0 +1,75 @@
+@model AdminSettingsViewModel
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Administrator details</h2>
+                    <div class="card-sub">How you appear in the Admin Console and in the activity log</div>
+                </div>
+                <span class="chip chip-admin"><svg class="ico-sm"><use href="#i-shield"/></svg> Administrator</span>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.ProfileError is string pe)
+                {
+                    <div class="alert alert-danger py-2 small" role="alert">@pe</div>
+                }
+                <form asp-action="SaveProfile" method="post" autocomplete="off">
+                    <div class="mb-3">
+                        <label asp-for="Profile.FullName" class="form-label">Full name</label>
+                        <input asp-for="Profile.FullName" class="form-control" required />
+                        <span asp-validation-for="Profile.FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.Email" class="form-label">Email address</label>
+                        <input asp-for="Profile.Email" class="form-control" type="email" required />
+                        <span asp-validation-for="Profile.Email" class="text-danger small"></span>
+                        <div class="form-text">You sign in with this email.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Profile.Phone" class="form-label">Phone (optional)</label>
+                        <input asp-for="Profile.Phone" class="form-control" />
+                        <span asp-validation-for="Profile.Phone" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-fin"><svg class="ico-sm"><use href="#i-check"/></svg> Save profile</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Change password</h2>
+                    <div class="card-sub">Required only when you sign in on a new session</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.PasswordError is string pwe)
+                {
+                    <div class="alert alert-danger py-2 small" role="alert">@pwe</div>
+                }
+                <form asp-action="SavePassword" method="post" autocomplete="new-password">
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.CurrentPassword" class="form-label">Current password</label>
+                        <input asp-for="ChangePassword.CurrentPassword" class="form-control" type="password" required />
+                        <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.NewPassword" class="form-label">New password (min 8 characters)</label>
+                        <input asp-for="ChangePassword.NewPassword" class="form-control" type="password" minlength="8" required />
+                        <span asp-validation-for="ChangePassword.NewPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.ConfirmPassword" class="form-label">Confirm new password</label>
+                        <input asp-for="ChangePassword.ConfirmPassword" class="form-control" type="password" required />
+                        <span asp-validation-for="ChangePassword.ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                    <button type="submit" class="btn btn-fin"><svg class="ico-sm"><use href="#i-lock"/></svg> Change password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

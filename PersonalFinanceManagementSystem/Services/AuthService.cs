@@ -23,10 +23,12 @@ public class AuthService : IAuthService
         TimeSpan.FromDays(30);
 
     private readonly ApplicationDbContext _db;
+    private readonly IActivityLogger _activity;
 
-    public AuthService(ApplicationDbContext db)
+    public AuthService(ApplicationDbContext db, IActivityLogger activity)
     {
         _db = db;
+        _activity = activity;
     }
 
     // ------------------------------------------------------------
@@ -58,7 +60,7 @@ public class AuthService : IAuthService
             u.RememberTokenHash == TokenHash(token) &&
             u.RememberTokenExpires > DateTime.Now);
 
-        if (remembered is null)
+        if (remembered is null || !remembered.IsActive)
         {
             return null;
         }
@@ -134,6 +136,9 @@ public class AuthService : IAuthService
 
         _db.SaveChanges();
 
+        _activity.Log(context, user.Id, user.FullName, "Registration",
+            $"New account registered ({user.Email}).");
+
         // IMPORTANT:
         // Do NOT create a session here.
         //
@@ -191,6 +196,37 @@ public class AuthService : IAuthService
         }
 
         // --------------------------------------------------------
+        // ACCOUNT ACTIVITY CHECK
+        // --------------------------------------------------------
+
+        // A deactivated account keeps its records but cannot sign in
+        // until an admin re-activates it.
+        if (!user.IsActive)
+        {
+            _activity.Log(context, user.Id, user.FullName, "SigninBlocked",
+                "Sign-in blocked: account is deactivated.");
+
+            return (
+                false,
+                "This account has been deactivated. Contact an administrator for help."
+            );
+        }
+
+        // --------------------------------------------------------
+        // ACCOUNT ACTIVITY CHECK
+        // --------------------------------------------------------
+
+        // A deactivated account keeps its records but cannot sign in
+        // until an admin re-activates it.
+        if (!user.IsActive)
+        {
+            return (
+                false,
+                "This account has been deactivated. Contact an administrator for help."
+            );
+        }
+
+        // --------------------------------------------------------
         // LOGIN SUCCESSFUL
         // --------------------------------------------------------
 
@@ -208,6 +244,10 @@ public class AuthService : IAuthService
             // cookie cannot outlive the user's choice.
             ClearRememberToken(user, context);
         }
+
+        _activity.Log(context, user.Id, user.FullName,
+            user.Role == UserRoles.Admin ? "AdminSignin" : "Signin",
+            $"{(rememberMe ? "Signed in (remember me)" : "Signed in")}.");
 
         return (
             true,
@@ -228,6 +268,10 @@ public class AuthService : IAuthService
         if (current is not null)
         {
             ClearRememberToken(current, context);
+
+            _activity.Log(context, current.Id, current.FullName,
+                current.Role == UserRoles.Admin ? "AdminSignout" : "Signout",
+                "Signed out.");
         }
 
         context.Session.Remove(SessionKey);

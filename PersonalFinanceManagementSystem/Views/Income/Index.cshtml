@@ -14,6 +14,25 @@
 
 @{
     var recordCount = Model.PeriodBreakdown.Sum(p => p.Count);
+
+    // Remaining-balance cards appear for all four income periods; periods
+    // without income (or expenses) read from an empty slice at zero.
+    var byPeriod = Model.PeriodBreakdown.ToDictionary(p => p.Period);
+    IncomePeriod[] balancePeriods = { IncomePeriod.Daily, IncomePeriod.Weekly, IncomePeriod.Monthly, IncomePeriod.Yearly };
+    PeriodSlice PeriodSlice(IncomePeriod period) =>
+        byPeriod.TryGetValue(period, out var slice)
+            ? slice
+            : new PeriodSlice { Period = period, Label = period.ToString() };
+
+    // Same tint mapping the breakdown uses — by period, so cards without
+    // records still get their color.
+    string TintFor(IncomePeriod p) => p switch
+    {
+        IncomePeriod.Daily => "tint-sky",
+        IncomePeriod.Weekly => "tint-amber",
+        IncomePeriod.Yearly => "tint-indigo",
+        _ => "tint-green"
+    };
 }
 <section class="kpi-grid mb-3" id="income-period-cards">
     <article class="kpi">
@@ -54,6 +73,35 @@
                 }
             </ul>
         }
+    </article>
+</section>
+
+@* Remaining balance per income period: every card reads its income,
+   deducted expenses and remaining balance straight from the database, so
+   adding/editing/deleting income or expenses updates them on the next
+   page load. Expenses with no income pool (records saved before the pool
+   feature existed) belong to no card — they only reduce the all-time
+   totals above, never a period balance. *@
+<section class="kpi-grid mb-3" id="income-remaining-cards">
+    @foreach (var period in balancePeriods)
+    {
+        var balance = PeriodSlice(period);
+        <article class="kpi">
+            <div class="kpi-head">
+                <span class="kpi-icon @TintFor(period)"><svg class="ico"><use href="#i-wallet"/></svg></span>
+                <span class="kpi-label">@balance.Label remaining balance</span>
+            </div>
+            <div class="kpi-value">@Format.Money(balance.Remaining, cur)</div>
+            <div class="kpi-foot">@Format.Money(balance.Total, cur) income · @Format.Money(balance.Spent, cur) expensed</div>
+        </article>
+    }
+    <article class="kpi" style="grid-column:1/-1">
+        <div class="kpi-head">
+            <span class="kpi-icon tint-green"><svg class="ico"><use href="#i-check"/></svg></span>
+            <span class="kpi-label">Total remaining balance</span>
+        </div>
+        <div class="kpi-value">@Format.Money(Model.TotalRemaining, cur)</div>
+        <div class="kpi-foot">@Format.Money(Model.SumByPeriod(p => p.Total), cur) income · @Format.Money(Model.SumByPeriod(p => p.Spent), cur) expensed across @Model.PeriodBreakdown.Count income type@(Model.PeriodBreakdown.Count == 1 ? "" : "s")</div>
     </article>
 </section>
 

@@ -1,10 +1,17 @@
 using PersonalFinanceManagementSystem.Models;
+using PersonalFinanceManagementSystem.Models.ViewModels;
 
 namespace PersonalFinanceManagementSystem.Services;
 
 public interface IExpenseService
 {
     List<Expense> GetAll(int userId);
+    /// <summary>Total expenses deducted from each income period
+    /// (pool), computed live so add/edit/delete of expense records is
+    /// always reflected. One slice per Daily/Weekly/Monthly/Yearly.
+    /// Expenses with no pool (records saved before pools existed)
+    /// belong to no slice.</summary>
+    List<PoolSpentSlice> TotalsByPool(int userId);
     Expense? Get(int userId, int id);
     Expense Add(Expense expense);
     /// <summary>Inserts several expenses in a single round trip (e.g. CSV import).</summary>

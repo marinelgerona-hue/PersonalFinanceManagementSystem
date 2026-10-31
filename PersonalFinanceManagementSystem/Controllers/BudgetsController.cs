@@ -5,14 +5,19 @@ using PersonalFinanceManagementSystem.Services;
 
 namespace PersonalFinanceManagementSystem.Controllers;
 
-/// <summary>Budget manager — per-category limits over a budget period
-/// (daily, weekly, monthly or yearly) with live spent/remaining.</summary>
+/// <summary>Budget manager — per-category limits over a Start Date to End
+/// Date schedule, with live spent/remaining.</summary>
 public class BudgetsController : AppControllerBase
 {
     private readonly IBudgetService _budgets;
 
-    public BudgetsController(IAuthService auth, IBudgetService budgets) : base(auth)
-        => _budgets = budgets;
+    private readonly ICategoryService _categories;
+
+    public BudgetsController(IAuthService auth, IBudgetService budgets, ICategoryService categories) : base(auth)
+    {
+        _budgets = budgets;
+        _categories = categories;
+    }
 
     /// <summary>Sortable columns of the budget table.</summary>
     private static readonly Dictionary<string, Func<BudgetStatus, object?>> BudgetSorts = new()
@@ -37,7 +42,9 @@ public class BudgetsController : AppControllerBase
             Items = items,
             Query = query,
             Page = items.ToPaged(query, BudgetSorts,
-                (b, term) => ListQueryExtensions.AnyContains(term, b.Budget.Category, b.Budget.Period.ToString()))
+                (b, term) => ListQueryExtensions.AnyContains(term, b.Budget.Category,
+                    b.Budget.StartDate.ToString("MMM d, yyyy"),
+                    b.Budget.EndDate.ToString("MMM d, yyyy")))
         };
         ViewData["Title"] = "Budgets";
         ViewData["ActiveNav"] = "budgets";
@@ -54,11 +61,8 @@ public class BudgetsController : AppControllerBase
         ViewData["ActiveNav"] = "budgets";
         return View("BudgetForm", new BudgetFormViewModel
         {
-            Year = now.Year,
-            Month = now.Month,
-            Period = BudgetPeriod.Monthly,
-            Day = 1,
-            AnchorDate = now.Date
+            StartDate = now.Date,
+            EndDate = new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month)).Date
         });
     }
 
@@ -66,11 +70,12 @@ public class BudgetsController : AppControllerBase
     [ValidateAntiForgeryToken]
     public IActionResult Create(BudgetFormViewModel model)
     {
-        ApplyPeriod(model);
         ResolveCategory(model);
+        ValidateSchedule(model);
         if (!ModelState.IsValid)
         {
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
+            ViewBag.Categories = _categories.GetActive(CategoryType.Expense);
             ViewData["Title"] = "Add Budget";
             ViewData["ActiveNav"] = "budgets";
             return View("BudgetForm", model);
@@ -81,14 +86,15 @@ public class BudgetsController : AppControllerBase
         if (error.Length > 0)
         {
             ModelState.AddModelError(nameof(model.Category), error);
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
+            ViewBag.Categories = _categories.GetActive(CategoryType.Expense);
             ViewData["Title"] = "Add Budget";
             ViewData["ActiveNav"] = "budgets";
             return View("BudgetForm", model);
         }
 
-        TempData["Success"] = $"{model.Period} budget for {model.Category} added.";
-        return RedirectToAction(nameof(Index), new { year = model.Year, month = model.Month });
+        TempData["Success"] = $"Budget for {model.Category} ({model.StartDate:MMM d, yyyy} – {model.EndDate:MMM d, yyyy}) added.";
+        return RedirectToAction(nameof(Index), new { year = model.StartDate.Year, month = model.StartDate.Month });
     }
 
     // ------------------------------------------------------------ edit
@@ -101,22 +107,21 @@ public class BudgetsController : AppControllerBase
 
         ViewData["Title"] = "Edit Budget";
         ViewData["ActiveNav"] = "budgets";
+        // Admin-managed category catalog drives the dropdown; falls back to the built-in list.
+        var categories = _categories.GetActive(CategoryType.Expense);
+        ViewBag.Categories = categories;
+
         // A previously saved custom category is not in the catalog, so the
         // form selects "Other" and prefills the custom field with its value.
-        var isCustomCategory = !Catalog.ExpenseCategories.Contains(budget.Category);
+        var isCustomCategory = !categories.Contains(budget.Category);
         return View("BudgetForm", new BudgetFormViewModel
         {
             Id = budget.Id,
             Category = isCustomCategory ? "Other" : budget.Category,
             CustomCategory = isCustomCategory ? budget.Category : null,
             Limit = budget.Limit,
-            Year = budget.Year,
-            Month = budget.Month,
-            Period = budget.Period,
-            Day = budget.Day,
-            AnchorDate = budget.Period is BudgetPeriod.Daily or BudgetPeriod.Weekly
-                ? budget.PeriodStart
-                : null
+            StartDate = budget.StartDate.Date,
+            EndDate = budget.EndDate.Date
         });
     }
 
@@ -124,11 +129,12 @@ public class BudgetsController : AppControllerBase
     [ValidateAntiForgeryToken]
     public IActionResult Edit(int id, BudgetFormViewModel model)
     {
-        ApplyPeriod(model);
         ResolveCategory(model);
+        ValidateSchedule(model);
         if (!ModelState.IsValid)
         {
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
+            ViewBag.Categories = _categories.GetActive(CategoryType.Expense);
             ViewData["Title"] = "Edit Budget";
             ViewData["ActiveNav"] = "budgets";
             return View("BudgetForm", model);
@@ -139,14 +145,15 @@ public class BudgetsController : AppControllerBase
         if (error.Length > 0)
         {
             ModelState.AddModelError(nameof(model.Category), error);
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
+            ViewBag.Categories = _categories.GetActive(CategoryType.Expense);
             ViewData["Title"] = "Edit Budget";
             ViewData["ActiveNav"] = "budgets";
             return View("BudgetForm", model);
         }
 
         TempData["Success"] = "Budget updated.";
-        return RedirectToAction(nameof(Index), new { year = model.Year, month = model.Month });
+        return RedirectToAction(nameof(Index), new { year = model.StartDate.Year, month = model.StartDate.Month });
     }
 
     // ------------------------------------------------------------ delete
@@ -186,33 +193,25 @@ public class BudgetsController : AppControllerBase
     /// <summary>For validation-failure re-renders after a successful "Other"
     /// mapping: re-selects "Other" and keeps the typed value so the user
     /// still sees the custom category that was applied.</summary>
-    private static void RestoreCategoryForDisplay(BudgetFormViewModel model)
+    private static void RestoreCategoryForDisplay(BudgetFormViewModel model, IReadOnlyList<string> catalog)
     {
         if (model.CustomCategory is { } custom &&
             custom.Length > 0 &&
-            !Catalog.ExpenseCategories.Contains(model.Category, StringComparer.OrdinalIgnoreCase) &&
+            !catalog.Contains(model.Category, StringComparer.OrdinalIgnoreCase) &&
             model.Category.Equals(custom, StringComparison.OrdinalIgnoreCase))
         {
             model.Category = "Other";
         }
     }
 
-    /// <summary>For daily and weekly budgets, folds the picked anchor date
-    /// into Year/Month/Day, and requires that a date was picked.</summary>
-    private void ApplyPeriod(BudgetFormViewModel model)
+    /// <summary>The budget schedule must run forward: End Date cannot fall
+    /// before the Start Date.</summary>
+    private void ValidateSchedule(BudgetFormViewModel model)
     {
-        if (model.Period is BudgetPeriod.Daily or BudgetPeriod.Weekly)
+        if (model.EndDate.Date < model.StartDate.Date)
         {
-            if (model.AnchorDate is not { } anchor)
-            {
-                ModelState.AddModelError(nameof(model.AnchorDate),
-                    "Please pick the date the budget starts on.");
-                return;
-            }
-
-            model.Year = anchor.Year;
-            model.Month = anchor.Month;
-            model.Day = anchor.Day;
+            ModelState.AddModelError(nameof(model.EndDate),
+                "End date must be on or after the start date.");
         }
     }
 
@@ -222,9 +221,7 @@ public class BudgetsController : AppControllerBase
         UserId = CurrentUser.Id,
         Category = model.Category,
         Limit = model.Limit,
-        Year = model.Year,
-        Month = model.Month,
-        Period = model.Period,
-        Day = model.Day
+        StartDate = model.StartDate.Date,
+        EndDate = model.EndDate.Date
     };
 }

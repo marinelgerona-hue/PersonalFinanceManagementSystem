@@ -1,0 +1,167 @@
+@model AdminCategoryListViewModel
+@{
+    var q = Model.Query;
+    string TypeUrl(string t) =>
+        $"/Admin/Categories?q={Uri.EscapeDataString(q.Search)}&type={t}&sort={q.Sort}&dir={q.Dir}&size={q.Size}";
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-tags"/></svg></span>
+            <div>
+                <div class="stat-label">Catalog entries</div>
+                <div class="stat-value">@(Model.TotalIncome + Model.TotalExpense)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            <div>
+                <div class="stat-label">Income sources</div>
+                <div class="stat-value">@Model.TotalIncome</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            <div>
+                <div class="stat-label">Expense categories</div>
+                <div class="stat-value">@Model.TotalExpense</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-alert"/></svg></span>
+            <div>
+                <div class="stat-label">Deactivated</div>
+                <div class="stat-value">@Model.TotalInactive</div>
+                <div class="stat-foot">hidden from user pickers</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head flex-wrap gap-2">
+        <div>
+            <h2 class="card-title">Categories</h2>
+            <div class="card-sub">The choices users get when adding income and expenses</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <ul class="nav-segments">
+                <li><a class="@(Model.Type is null ? "active" : "")" href="@TypeUrl("all")">All</a></li>
+                <li><a class="@(Model.Type == CategoryType.Income ? "active" : "")" href="@TypeUrl("income")">Income</a></li>
+                <li><a class="@(Model.Type == CategoryType.Expense ? "active" : "")" href="@TypeUrl("expense")">Expense</a></li>
+            </ul>
+            <a class="btn btn-fin" asp-action="Create" asp-route-type="@Model.Type"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Category</a>
+        </div>
+    </div>
+
+    <div class="card-body-fin">
+        @if (Model.Page.Items.Count > 0)
+        {
+            <div class="list-toolbar list-toolbar-flush">
+                @{ ViewData["SearchPlaceholder"] = "Search category name…"; }
+                <partial name="_ListToolbar" model="q" />
+            </div>
+        }
+        @if (Model.Page.Items.Count > 0 && Model.Page.TotalCount == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-search"/></svg>
+                <p>No categories match “@q.Search”.</p>
+                <a class="btn btn-soft btn-sm" href="@Context.Request.WithQuery(("q", null), ("page", null))">Clear search</a>
+            </div>
+        }
+        else if (Model.Page.Items.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-tags"/></svg>
+                <p>No categories in the catalog yet. Add the first one.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="fin-table fin-table-fixed">
+                    <thead>
+                        <tr>
+                            @Html.SortHeader(q, "name", "Name")
+                            @Html.SortHeader(q, "type", "Type")
+                            @Html.SortHeader(q, "status", "Status")
+                            <th>Used by records</th>
+                            @Html.SortHeader(q, "created", "Created", "desc", "col-date")
+                            <th class="text-end col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Page.Items)
+                        {
+                            var c = row.Category;
+                            <tr>
+                                <td>
+                                    <span class="chip"><span class="dot" style="background:@Format.CategoryColor(c.Name)"></span>@c.Name</span>
+                                </td>
+                                <td>
+                                    @if (c.Type == CategoryType.Income)
+                                    {
+                                        <span class="chip chip-info"><svg class="ico-sm"><use href="#i-income"/></svg> Income</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip"><svg class="ico-sm"><use href="#i-expense"/></svg> Expense</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (c.IsActive)
+                                    {
+                                        <span class="chip chip-success"><span class="dot dot-green"></span> Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-warning"><span class="dot dot-amber" style="background:#f59e0b"></span> Hidden</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="text-muted">@(row.InUseCount == 0 ? "—" : Format.Number(row.InUseCount))</span>
+                                </td>
+                                <td>@c.CreatedAt.ToString("MMM d, yyyy")</td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn-icon" asp-action="Edit" asp-route-id="@c.Id" title="Edit"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                                    @if (c.IsActive)
+                                    {
+                                        <form class="d-inline" asp-action="Deactivate" asp-route-id="@c.Id"
+                                              asp-route-returnUrl="@Context.Request.Path@Context.Request.QueryString" method="post">
+                                            <button type="submit" class="btn-icon" title="Deactivate — hides it from user pickers"><svg class="ico-sm"><use href="#i-eye-off"/></svg></button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form class="d-inline" asp-action="Activate" asp-route-id="@c.Id"
+                                              asp-route-returnUrl="@Context.Request.Path@Context.Request.QueryString" method="post">
+                                            <button type="submit" class="btn-icon" title="Re-activate — shows it again"><svg class="ico-sm"><use href="#i-eye"/></svg></button>
+                                        </form>
+                                    }
+                                    <form class="d-inline" asp-action="Delete" asp-route-id="@c.Id" method="post"
+                                          onsubmit="return confirm('Delete the category “@c.Name”?')">
+                                        <button type="submit" class="btn-icon danger" title="@(row.InUseCount > 0 ? "In use by existing records — deletion is blocked" : "Delete from catalog")" @(row.InUseCount > 0 ? "" : "")><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <partial name="_Pagination" model='Model.Page.ToPager(q, "categories")' />
+            <div class="px-3 pb-3 pt-2 small text-muted">
+                Deactivating hides a category from every user's pickers without touching their saved records.
+                Categories still used by existing records are protected from deletion and renaming — deactivate them instead,
+                so historical records keep their meaning. Records always keep whatever category name they were saved with.
+            </div>
+        }
+    </div>
+</div>

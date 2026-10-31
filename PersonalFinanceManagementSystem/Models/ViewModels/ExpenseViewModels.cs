@@ -69,6 +69,11 @@ public class ExpenseListViewModel
     /// each expense record deducts from.</summary>
     public Dictionary<int, string> BudgetNames { get; set; } = new();
 
+    /// <summary>Total expenses grouped by deduction period
+    /// (Daily/Weekly/Monthly/Yearly) for the summary cards. From the same
+    /// shared computation as the Income page's per-period balances.</summary>
+    public List<PoolSpentSlice> PoolBreakdown { get; set; } = new();
+
     /// <summary>TotalIncome − Total. Recomputed on every page load, so it always
     /// reflects the latest income and expense records.</summary>
     public decimal RemainingBalance => TotalIncome - Total;
@@ -91,7 +96,25 @@ public class PoolLedgerEntry
     public decimal Amount { get; set; }
 
     /// <summary>Id of the expense row the ledger entry came from. The form
-    /// excludes its own edited record so the shown balance is the balance
-    /// available *before* this expense is applied.</summary>
+/// excludes its own edited record so the shown balance is the balance
+/// available *before* this expense is applied.</summary>
     public int ExpenseId { get; set; }
+}
+
+/// <summary>Total expenses deducted from one income period (pool), shared/// by the Income page's per-period balances and the Expense page's
+/// deduction cards so both pages always show the same numbers. One slice
+/// per Daily/Weekly/Monthly/Yearly; expenses with no pool belong to none.</summary>
+public class PoolSpentSlice
+{
+    public IncomePeriod Period { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Tint { get; set; } = string.Empty;
+
+    /// <summary>Sum of Amount over expenses whose chosen income pool
+    /// equals Period. Computed live on every read, so add/edit/delete of
+    /// expense records is reflected automatically.</summary>
+    public decimal Spent { get; set; }
+
+    /// <summary>Number of expense records deducted from this period.</summary>
+    public int Count { get; set; }
 }

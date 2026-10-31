@@ -112,7 +112,7 @@
                             <tr>
                                 <td>
                                     <span class="chip"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span>
-                                    <span class="chip chip-info ms-1" title="Budget period">@b.Budget.Period</span>
+                                    <span class="chip chip-info ms-1" title="Budget period">@b.Budget.StartDate.ToString("MMM d, yyyy") – @b.Budget.EndDate.ToString("MMM d, yyyy")</span>
                                 </td>
                                 <td class="text-end amount">@Format.Money(b.Budget.Limit, cur)</td>
                                 <td class="text-end amount">@Format.Money(b.Spent, cur)</td>
@@ -146,7 +146,7 @@
             <partial name="_Pagination" model='Model.Page.ToPager(Model.Query, "budgets")' />
             <div class="px-3 pb-3 pt-2 small text-muted">
                 Spent amounts are calculated live from your expenses: each expense is deducted from its assigned budget, or from any
-                same-category budget whose period covers the expense date — never from two budgets at once.
+                same-category budget whose Start Date / End Date window covers the expense date — never from two budgets at once.
             </div>
         }
     </div>
