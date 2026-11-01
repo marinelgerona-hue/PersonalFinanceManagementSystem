@@ -1,0 +1,187 @@
+@model AdminUserListViewModel
+@{
+    var q = Model.Query;
+    string FilterUrl(string role, string status) =>
+        $"/Admin/Users?q={Uri.EscapeDataString(q.Search)}&role={role}&status={status}&sort={q.Sort}&dir={q.Dir}&size={q.Size}";
+    var activeFilter = string.IsNullOrEmpty(Model.Filter.Role) || Model.Filter.Role == "all";
+    var activeStatus = string.IsNullOrEmpty(Model.Filter.Status) || Model.Filter.Status == "all";
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-users"/></svg></span>
+            <div>
+                <div class="stat-label">All accounts</div>
+                <div class="stat-value">@Model.TotalUsers</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-shield"/></svg></span>
+            <div>
+                <div class="stat-label">Administrators</div>
+                <div class="stat-value">@Model.TotalAdmins</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-circle-check"/></svg></span>
+            <div>
+                <div class="stat-label">Active</div>
+                <div class="stat-value">@Model.TotalActive</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-alert"/></svg></span>
+            <div>
+                <div class="stat-label">Deactivated</div>
+                <div class="stat-value">@Model.TotalInactive</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head flex-wrap gap-2">
+        <div>
+            <h2 class="card-title">Accounts</h2>
+            <div class="card-sub">Every registered account — activate, deactivate and manage access</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <ul class="nav-segments">
+                <li><a class="@(activeFilter && activeStatus ? "active" : "")" href="@FilterUrl("all", "all")">All</a></li>
+                <li><a class="@(!activeStatus && Model.Filter.Status == "active" ? "active" : "")" href="@FilterUrl("all", "active")">Active</a></li>
+                <li><a class="@(!activeStatus && Model.Filter.Status == "inactive" ? "active" : "")" href="@FilterUrl("all", "inactive")">Deactivated</a></li>
+                <li><a class="@(!activeFilter && Model.Filter.Role == UserRoles.Admin ? "active" : "")" href="@FilterUrl("Admin", "all")">Admins</a></li>
+                <li><a class="@(!activeFilter && Model.Filter.Role == UserRoles.User ? "active" : "")" href="@FilterUrl("User", "all")">Users</a></li>
+            </ul>
+            <a class="btn btn-fin" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Account</a>
+        </div>
+    </div>
+
+    <div class="card-body-fin">
+        @if (Model.Page.Items.Count > 0)
+        {
+            <div class="list-toolbar list-toolbar-flush">
+                @{ ViewData["SearchPlaceholder"] = "Search name, email or phone…"; }
+                <partial name="_ListToolbar" model="q" />
+            </div>
+        }
+        @if (Model.Page.Items.Count > 0 && Model.Page.TotalCount == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-search"/></svg>
+                <p>No accounts match “@q.Search”.</p>
+                <a class="btn btn-soft btn-sm" href="@Context.Request.WithQuery(("q", null), ("page", null))">Clear search</a>
+            </div>
+        }
+        else if (Model.Page.Items.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-users"/></svg>
+                <p>No accounts match this filter yet. <a asp-action="Create">Create an account</a> to get started.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="fin-table fin-table-fixed">
+                    <thead>
+                        <tr>
+                            @Html.SortHeader(q, "name", "Account")
+                            @Html.SortHeader(q, "role", "Role")
+                            @Html.SortHeader(q, "status", "Status")
+                            <th>Records</th>
+                            @Html.SortHeader(q, "created", "Registered", "desc", "col-date")
+                            <th class="text-end col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Page.Items)
+                        {
+                            var u = row.User;
+                            var isSelf = u.Id == ViewBag.User.Id;
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <span class="avatar avatar-sm">@string.Join("", u.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])))</span>
+                                        <span class="user-cell-text">
+                                            <span class="user-cell-name">
+                                                @if (isSelf)
+                                                {
+                                                    @u.FullName <span class="chip chip-muted chip-sm">you</span>
+                                                }
+                                                else
+                                                {
+                                                    @u.FullName
+                                                }
+                                            </span>
+                                            <span class="user-cell-sub">@u.Email</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (u.Role == UserRoles.Admin)
+                                    {
+                                        <span class="chip chip-admin"><svg class="ico-sm"><use href="#i-shield"/></svg> Administrator</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-muted">User</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (u.IsActive)
+                                    {
+                                        <span class="chip chip-success"><span class="dot dot-green"></span> Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip chip-warning"><span class="dot dot-amber" style="background:#f59e0b"></span> Deactivated</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="text-muted">@Format.Number(row.IncomeRecords) in / @Format.Number(row.ExpenseRecords) ex</span>
+                                </td>
+                                <td>
+                                    <span title="@u.CreatedAt.ToString("MMM d, yyyy, h:mm tt")">@u.CreatedAt.ToString("MMM d, yyyy")</span>
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn-icon" asp-action="Details" asp-route-id="@u.Id" title="View account"><svg class="ico-sm"><use href="#i-user-circle"/></svg></a>
+                                    <a class="btn-icon" asp-action="Edit" asp-route-id="@u.Id" title="Edit"><svg class="ico-sm"><use href="#i-edit"/></svg></a>
+                                    @if (!isSelf)
+                                    {
+                                        if (u.IsActive)
+                                        {
+                                            <form class="d-inline" asp-action="Deactivate" asp-route-id="@u.Id"
+                                                  asp-route-returnUrl="@Context.Request.Path@Context.Request.QueryString" method="post">
+                                                <button type="submit" class="btn-icon" title="Deactivate — blocks sign-in, keeps records"><svg class="ico-sm"><use href="#i-lock"/></svg></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form class="d-inline" asp-action="Activate" asp-route-id="@u.Id"
+                                                  asp-route-returnUrl="@Context.Request.Path@Context.Request.QueryString" method="post">
+                                                <button type="submit" class="btn-icon" title="Activate — allows sign-in again"><svg class="ico-sm"><use href="#i-circle-check"/></svg></button>
+                                            </form>
+                                        }
+                                        <form class="d-inline" asp-action="Delete" asp-route-id="@u.Id" method="post"
+                                              onsubmit="return confirm('Delete @u.FullName (@u.Email)? This permanently removes the account AND all of its income, expenses, budgets and goals.');">
+                                            <button type="submit" class="btn-icon danger" title="Delete account and records"><svg class="ico-sm"><use href="#i-trash"/></svg></button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <partial name="_Pagination" model='Model.Page.ToPager(q, "accounts")' />
+        }
+    </div>
+</div>

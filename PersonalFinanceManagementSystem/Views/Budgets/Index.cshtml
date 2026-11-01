@@ -70,57 +70,66 @@
     </div>
 
     <div class="card-body-fin">
-        @if (Model.Items.Count == 0)
+        @if (Model.Items.Count > 0)
+        {
+            <div class="list-toolbar list-toolbar-flush">
+                @{ ViewData["SearchPlaceholder"] = "Search category or period…"; }
+                <partial name="_ListToolbar" model="Model.Query" />
+            </div>
+        }
+        @if (Model.Items.Count > 0 && Model.Page.TotalCount == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-search"/></svg>
+                <p>No budgets match “@Model.Query.Search”.</p>
+                <a class="btn btn-soft btn-sm" href="@Context.Request.WithQuery(("q", null), ("page", null))">Clear search</a>
+            </div>
+        }
+        else if (Model.Items.Count == 0)
         {
             <div class="empty-state">
                 <svg class="ico ico-lg text-muted"><use href="#i-budget"/></svg>
                 <p>No budgets for @Format.MonthName(Model.Month) @Model.Year yet.</p>
-                <a class="btn btn-fin btn-sm" asp-action="Create"><svg class="ico-sm"><use href="#i-plus"/></svg> Add Budget</a>
             </div>
         }
         else
         {
             <div class="table-responsive">
-                <table class="fin-table">
+                <table class="fin-table fin-table-fixed">
                     <thead>
                         <tr>
-                            <th>Category</th>
-                            <th class="text-end">Budget</th>
-                            <th class="text-end">Spent</th>
-                            <th class="text-end">Remaining</th>
-                            <th style="min-width:180px">Progress</th>
-                            <th class="text-end">Actions</th>
+                            @Html.SortHeader(Model.Query, "category", "Category")
+                            @Html.SortHeader(Model.Query, "limit", "Budget", "desc", "text-end col-amount")
+                            @Html.SortHeader(Model.Query, "spent", "Spent", "desc", "text-end col-amount")
+                            @Html.SortHeader(Model.Query, "remaining", "Remaining", "asc", "text-end col-amount")
+                            @Html.SortHeader(Model.Query, "used", "Progress", "desc", "th-progress")
+                            <th class="text-end col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var b in Model.Items)
+                        @foreach (var b in Model.Page.Items)
                         {
                             <tr>
                                 <td>
                                     <span class="chip"><span class="dot" style="background:@Format.CategoryColor(b.Budget.Category)"></span>@b.Budget.Category</span>
-                                    <span class="chip chip-info ms-1" title="Budget period">@b.Budget.Period</span>
+                                    <span class="chip chip-info ms-1" title="Budget period">@b.Budget.StartDate.ToString("MMM d, yyyy") – @b.Budget.EndDate.ToString("MMM d, yyyy")</span>
                                 </td>
                                 <td class="text-end amount">@Format.Money(b.Budget.Limit, cur)</td>
                                 <td class="text-end amount">@Format.Money(b.Spent, cur)</td>
                                 <td class="text-end amount @(b.Remaining < 0 ? "neg" : "pos")">@Format.Money(b.Remaining, cur)</td>
                                 <td>
-                                    <div class="progress-track">
+                                    @{
+                                        var statusLabel = b.IsOver ? "Over budget" : b.IsNear ? "Close to limit" : "On track";
+                                        var statusColor = b.IsOver ? "#ef4444" : b.IsNear ? "#f59e0b" : "#10b981";
+                                    }
+                                    @* The bar itself is all that sits in the row now — the percent-used
+                                       and status text that used to sit permanently underneath it (repeating
+                                       "On track" on almost every row) live in a hover/focus tooltip instead. *@
+                                    <div class="progress-track progress-track-hint" tabindex="0"
+                                         data-tooltip="@ChartTip.Build(b.Budget.Category,
+                                             ("Used", $"{Format.Pct(b.PercentUsed)}%", statusColor),
+                                             ("Status", statusLabel, null))">
                                         <div class="progress-fill @(b.IsOver ? "over" : b.IsNear ? "warn" : "")" style="width:@Format.Pct(Math.Min(b.PercentUsed, 100))%"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between mt-1">
-                                        <span class="small text-muted">@Format.Pct(b.PercentUsed)% used</span>
-                                        @if (b.IsOver)
-                                        {
-                                            <span class="chip chip-danger">Over budget</span>
-                                        }
-                                        else if (b.IsNear)
-                                        {
-                                            <span class="chip chip-warn">Close to limit</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="chip chip-success">On track</span>
-                                        }
                                     </div>
                                 </td>
                                 <td class="text-end text-nowrap">
@@ -134,9 +143,10 @@
                     </tbody>
                 </table>
             </div>
-            <div class="px-3 pb-3 small text-muted">
+            <partial name="_Pagination" model='Model.Page.ToPager(Model.Query, "budgets")' />
+            <div class="px-3 pb-3 pt-2 small text-muted">
                 Spent amounts are calculated live from your expenses: each expense is deducted from its assigned budget, or from any
-                same-category budget whose period covers the expense date — never from two budgets at once.
+                same-category budget whose Start Date / End Date window covers the expense date — never from two budgets at once.
             </div>
         }
     </div>

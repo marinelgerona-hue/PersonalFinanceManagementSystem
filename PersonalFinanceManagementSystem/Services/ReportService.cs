@@ -15,19 +15,22 @@ public class ReportService : IReportService
     private readonly IExpenseService _expenses;
     private readonly IBudgetService _budgets;
     private readonly ISavingsGoalService _goals;
+    private readonly IRecurringTransactionService _recurring;
 
     public ReportService(
         ApplicationDbContext db,
         IIncomeService incomes,
         IExpenseService expenses,
         IBudgetService budgets,
-        ISavingsGoalService goals)
+        ISavingsGoalService goals,
+        IRecurringTransactionService recurring)
     {
         _db = db;
         _incomes = incomes;
         _expenses = expenses;
         _budgets = budgets;
         _goals = goals;
+        _recurring = recurring;
     }
 
     private string Currency(int userId)
@@ -79,7 +82,11 @@ public class ReportService : IReportService
                 now.Year,
                 now.Month),
 
-            Recent = RecentTransactions(userId, 6)
+            Recent = RecentTransactions(userId, 10),
+
+            UpcomingBills = _recurring.GetUpcoming(userId, 14)
+                .Select(r => new UpcomingBill { Item = r })
+                .ToList()
         };
 
         vm.Balance = vm.TotalIncome - vm.TotalExpenses;

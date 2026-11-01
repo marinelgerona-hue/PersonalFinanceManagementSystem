@@ -88,7 +88,7 @@ public static class DemoSeeder
                 AddExp("Health", rnd.Next(40, 180) + rnd.Next(0, 99) / 100m, rnd.Next(6, 24), "Pharmacy / checkup");
         }
 
-        // ---- Budgets (current month) ----
+        // ---- Budgets (current calendar month) ----
         var budgets = new (string Category, decimal Limit)[]
         {
             ("Housing", 1200m),
@@ -100,7 +100,9 @@ public static class DemoSeeder
         };
         foreach (var (category, limit) in budgets)
         {
-            store.Budgets.Add(new Budget { Id = budgetId(), UserId = user.Id, Category = category, Limit = limit, Year = today.Year, Month = today.Month });
+            store.Budgets.Add(new Budget { Id = budgetId(), UserId = user.Id, Category = category, Limit = limit,
+                StartDate = new DateTime(today.Year, today.Month, 1).Date,
+                EndDate = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)).Date });
         }
 
         // ---- Savings goals + contribution history ----

@@ -19,6 +19,44 @@ namespace PersonalFinanceManagementSystem.Migrations
                 .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.ActivityLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ActivityLogs");
+                });
+
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Budget", b =>
                 {
                     b.Property<int>("Id")
@@ -29,22 +67,16 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<int>("Day")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("Limit")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("Month")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Period")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Year")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -52,6 +84,34 @@ namespace PersonalFinanceManagementSystem.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Budgets");
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Categories");
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Expense", b =>
@@ -80,10 +140,15 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<int?>("RecurringTransactionId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RecurringTransactionId");
 
                     b.HasIndex("UserId");
 
@@ -140,6 +205,9 @@ namespace PersonalFinanceManagementSystem.Migrations
                     b.Property<int>("Period")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RecurringTransactionId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -149,9 +217,62 @@ namespace PersonalFinanceManagementSystem.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RecurringTransactionId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Incomes");
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.RecurringTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("BudgetId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IncomePool")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("NextDueDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RecurringTransactions");
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.SavingsGoal", b =>
@@ -208,6 +329,9 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -229,9 +353,21 @@ namespace PersonalFinanceManagementSystem.Migrations
                     b.Property<string>("RememberTokenHash")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.ActivityLog", b =>
+                {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Budget", b =>
@@ -245,6 +381,11 @@ namespace PersonalFinanceManagementSystem.Migrations
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Expense", b =>
                 {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.RecurringTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("RecurringTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -268,6 +409,20 @@ namespace PersonalFinanceManagementSystem.Migrations
                 });
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.Income", b =>
+                {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.RecurringTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("RecurringTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PersonalFinanceManagementSystem.Models.RecurringTransaction", b =>
                 {
                     b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
                         .WithMany()

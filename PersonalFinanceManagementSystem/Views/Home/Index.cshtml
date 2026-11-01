@@ -1,55 +1,184 @@
 @{
-    ViewData["Title"] = "Welcome";
+    ViewData["Title"] = "Personal finance, simplified";
 }
 
-<div class="landing">
-    <div class="landing-inner">
-
-        <div class="landing-brand">
-            <span class="brand-logo"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M16 12h4" /></svg></span>
-            <span>Finance <span class="text-brand">Management</span></span>
-        </div>
-
-        <h1 class="landing-title">Welcome to my Finance Management</h1>
-        <p class="landing-sub">
-            Track your income, expenses, budgets and savings goals — all in one place.
-        </p>
-
-        <div class="landing-actions">
-            <a class="btn btn-outline-light-ghost btn-lg" asp-controller="Account" asp-action="Login">Log in</a>
-            <a class="btn btn-fin btn-lg" asp-controller="Account" asp-action="Register">Get started</a>
-        </div>
-
-        <div class="landing-features">
-            <div class="landing-feature">
-                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income" /></svg></span>
-                <div>
-                    <div class="landing-feature-title">Income tracking</div>
-                    <div class="landing-feature-text">Log every peso you earn, by source.</div>
-                </div>
-            </div>
-            <div class="landing-feature">
-                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense" /></svg></span>
-                <div>
-                    <div class="landing-feature-title">Expense tracking</div>
-                    <div class="landing-feature-text">See where your money goes each month.</div>
-                </div>
-            </div>
-            <div class="landing-feature">
-                <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-budget" /></svg></span>
-                <div>
-                    <div class="landing-feature-title">Budgets &amp; goals</div>
-                    <div class="landing-feature-text">Set limits and save for what matters.</div>
-                </div>
-            </div>
-            <div class="landing-feature">
-                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-report" /></svg></span>
-                <div>
-                    <div class="landing-feature-title">Reports</div>
-                    <div class="landing-feature-text">Monthly and annual insights at a glance.</div>
-                </div>
+<div class="lp">
+    @* ================================================================ Header *@
+    <header class="lp-header">
+        <div class="lp-container lp-header-inner">
+            <a class="lp-brand" asp-controller="Home" asp-action="Index">
+                <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet"/></svg></span>
+                <span>Finance <span class="text-brand">Management</span></span>
+            </a>
+            <nav class="lp-nav d-none d-md-flex" aria-label="Sections">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How it works</a>
+            </nav>
+            <div class="lp-header-actions">
+                <a class="lp-link d-none d-sm-inline" asp-controller="Account" asp-action="Login">Log in</a>
+                <a class="btn btn-fin" asp-controller="Account" asp-action="Register">Get started</a>
             </div>
         </div>
+    </header>
 
-    </div>
+    @* ================================================================ Hero *@
+    <section class="lp-hero">
+        <div class="lp-container lp-hero-grid">
+            <div class="lp-hero-copy">
+                <span class="lp-eyebrow"><span class="lp-eyebrow-dot"></span>Personal finance, simplified</span>
+                <h1 class="lp-title">Know exactly where your money goes.</h1>
+                <p class="lp-lead">
+                    Track income and expenses, set budgets that warn you before you overspend,
+                    and watch your savings goals grow — all from one clear dashboard.
+                </p>
+                <div class="lp-cta">
+                    <a class="btn btn-fin btn-lg" asp-controller="Account" asp-action="Register">
+                        Create free account <svg class="ico-sm"><use href="#i-arrow-right"/></svg>
+                    </a>
+                    <a class="btn btn-soft btn-lg" asp-controller="Account" asp-action="Login">Sign in</a>
+                </div>
+                <ul class="lp-checks">
+                    <li><svg class="ico-sm"><use href="#i-circle-check"/></svg>No credit card required</li>
+                    <li><svg class="ico-sm"><use href="#i-circle-check"/></svg>Multiple currencies</li>
+                    <li><svg class="ico-sm"><use href="#i-circle-check"/></svg>Set up in a minute</li>
+                </ul>
+            </div>
+
+            @* Product preview (illustrative sample data, built in HTML) *@
+            <div class="lp-preview" aria-hidden="true">
+                <div class="lp-window">
+                    <div class="lp-window-bar"><i></i><i></i><i></i><span>Dashboard</span></div>
+                    <div class="lp-window-body">
+                        <div class="lp-kpis">
+                            <div class="lp-kpi"><span>Total balance</span><strong>$18,181</strong><em class="up">+$3,246 this month</em></div>
+                            <div class="lp-kpi"><span>Income · Oct</span><strong>$6,220</strong><em class="up">▲ 5.8%</em></div>
+                            <div class="lp-kpi"><span>Expenses · Oct</span><strong>$2,974</strong><em class="down">▲ 16.6%</em></div>
+                        </div>
+                        <div class="lp-panels">
+                            <div class="lp-panel">
+                                <div class="lp-panel-title">Cash flow</div>
+                                <div class="lp-bars">
+                                    @foreach (var (inc, exp) in new[] { (62, 30), (62, 38), (73, 32), (65, 31), (79, 31), (75, 36) })
+                                    {
+                                        <div class="lp-bar-pair"><span class="in" style="height:@(inc)%"></span><span class="out" style="height:@(exp)%"></span></div>
+                                    }
+                                </div>
+                            </div>
+                            <div class="lp-panel">
+                                <div class="lp-panel-title">Budgets</div>
+                                <div class="lp-meter"><div><span>Groceries</span><span>$412 / $600</span></div><i><b style="width:69%"></b></i></div>
+                                <div class="lp-meter"><div><span>Transport</span><span>$145 / $250</span></div><i><b style="width:58%"></b></i></div>
+                                <div class="lp-meter"><div><span>Dining</span><span class="neg">$238 / $200</span></div><i><b class="over" style="width:100%"></b></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lp-float">
+                    <span class="lp-float-ico"><svg class="ico-sm"><use href="#i-target"/></svg></span>
+                    <span><strong>Emergency fund</strong><em>$7,500 of $10,000 · 75%</em></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ================================================================ Features *@
+    <section class="lp-section" id="features">
+        <div class="lp-container">
+            <div class="lp-section-head">
+                <span class="lp-kicker">Features</span>
+                <h2 class="lp-h2">Everything you need to manage your money</h2>
+                <p class="lp-section-sub">Simple tools that work together, so your budgets, goals and reports always reflect what you actually spent.</p>
+            </div>
+            <div class="lp-features">
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+                    <h3>Income tracking</h3>
+                    <p>Record salary, freelance work, investments and more, grouped by source and period.</p>
+                </article>
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+                    <h3>Expense tracking</h3>
+                    <p>Log spending by category and see at a glance where each month's money went.</p>
+                </article>
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-amber"><svg class="ico"><use href="#i-budget"/></svg></span>
+                    <h3>Budgets with alerts</h3>
+                    <p>Set limits per category and get flagged when you're close to — or over — a budget.</p>
+                </article>
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-sky"><svg class="ico"><use href="#i-target"/></svg></span>
+                    <h3>Savings goals</h3>
+                    <p>Set a target and deadline, and see how much to save each day, week or month to hit it.</p>
+                </article>
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-violet"><svg class="ico"><use href="#i-report"/></svg></span>
+                    <h3>Reports &amp; export</h3>
+                    <p>Monthly, annual and custom-range reports, with CSV export when you need the raw numbers.</p>
+                </article>
+                <article class="lp-feature">
+                    <span class="lp-feature-ico tint-indigo"><svg class="ico"><use href="#i-globe"/></svg></span>
+                    <h3>Your currency</h3>
+                    <p>Work in US dollars, euros, pounds, rupees, pesos and more — set once in your profile.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    @* ================================================================ How it works *@
+    <section class="lp-section lp-section-alt" id="how-it-works">
+        <div class="lp-container">
+            <div class="lp-section-head">
+                <span class="lp-kicker">How it works</span>
+                <h2 class="lp-h2">Up and running in three steps</h2>
+            </div>
+            <ol class="lp-steps">
+                <li>
+                    <span class="lp-step-num">1</span>
+                    <h3>Create your account</h3>
+                    <p>Sign up with your email and pick your default currency.</p>
+                </li>
+                <li>
+                    <span class="lp-step-num">2</span>
+                    <h3>Add income &amp; expenses</h3>
+                    <p>Record what comes in and goes out — your dashboard updates instantly.</p>
+                </li>
+                <li>
+                    <span class="lp-step-num">3</span>
+                    <h3>Set budgets &amp; goals</h3>
+                    <p>Plan ahead with category budgets and savings goals that track themselves.</p>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    @* ================================================================ Closing CTA *@
+    <section class="lp-section">
+        <div class="lp-container">
+            <div class="lp-band">
+                <div>
+                    <h2>Start taking control of your finances today.</h2>
+                    <p>Create your free account and see your first monthly overview in minutes.</p>
+                </div>
+                <div class="lp-band-actions">
+                    <a class="btn btn-lg lp-btn-light" asp-controller="Account" asp-action="Register">Get started for free <svg class="ico-sm"><use href="#i-arrow-right"/></svg></a>
+                    <a class="lp-band-link" asp-controller="Account" asp-action="Login">I already have an account</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ================================================================ Footer *@
+    <footer class="lp-footer">
+        <div class="lp-container lp-footer-inner">
+            <a class="lp-brand lp-brand-sm" asp-controller="Home" asp-action="Index">
+                <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet"/></svg></span>
+                <span>Finance <span class="text-brand">Management</span></span>
+            </a>
+            <span class="lp-copy">© @DateTime.Now.Year Finance Management</span>
+            <nav class="lp-footer-links" aria-label="Footer">
+                <a asp-controller="Account" asp-action="Login">Log in</a>
+                <a asp-controller="Account" asp-action="Register">Create account</a>
+            </nav>
+        </div>
+    </footer>
 </div>

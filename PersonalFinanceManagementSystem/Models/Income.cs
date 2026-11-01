@@ -24,4 +24,8 @@ public class Income
 
     public DateTime Date { get; set; }
     public string Note { get; set; } = string.Empty;
+
+    /// <summary>Set when this row was auto-generated from a recurring definition.
+    /// Null for manually-entered income.</summary>
+    public int? RecurringTransactionId { get; set; }
 }

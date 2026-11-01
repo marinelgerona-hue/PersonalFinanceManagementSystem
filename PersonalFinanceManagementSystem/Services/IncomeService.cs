@@ -12,10 +12,12 @@ namespace PersonalFinanceManagementSystem.Services;
 public class IncomeService : IIncomeService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IExpenseService _expenses;
 
-    public IncomeService(ApplicationDbContext db)
+    public IncomeService(ApplicationDbContext db, IExpenseService expenses)
     {
         _db = db;
+        _expenses = expenses;
     }
 
     // ------------------------------------------------------------
@@ -54,6 +56,12 @@ public class IncomeService : IIncomeService
         _db.SaveChanges();
 
         return income;
+    }
+
+    public void AddRange(IEnumerable<Income> incomes)
+    {
+        _db.Incomes.AddRange(incomes);
+        _db.SaveChanges();
     }
 
     // ------------------------------------------------------------
@@ -169,6 +177,11 @@ public class IncomeService : IIncomeService
     // Totals grouped by income period
     // ------------------------------------------------------------
 
+    // Fills each slice's Total from income of that period kind and Spent
+    // from expenses that chose the same kind as their income pool. Both
+    // sums run straight against the current database rows, so adding,
+    // editing or deleting either record updates every balance on the next
+    // read — there is no stored counter to fall out of sync.
     public List<PeriodSlice> TotalsByPeriod(int userId)
     {
         var groups = _db.Incomes
@@ -176,6 +189,12 @@ public class IncomeService : IIncomeService
             .GroupBy(i => i.Period)
             .Select(g => new { Period = g.Key, Total = g.Sum(i => i.Amount), Count = g.Count() })
             .ToList();
+
+        // Expenses drawn from each pool come from one shared query on the
+        // Expense service (the same numbers the Expense page's per-period
+        // deduction cards show), so the two pages can never disagree.
+        var spentByPool = _expenses.TotalsByPool(userId)
+            .ToDictionary(s => s.Period, s => s.Spent);
 
         var total = groups.Sum(g => g.Total);
 
@@ -194,6 +213,7 @@ public class IncomeService : IIncomeService
                 Color = Format.CategoryColor(g.Period.ToString()),
                 Total = g.Total,
                 Count = g.Count,
+                Spent = spentByPool.TryGetValue(g.Period, out var spent) ? spent : 0m,
                 // Share of all income recorded for this period kind.
                 Percent = total > 0 ? Math.Round(g.Total / total * 100, 1) : 0
             })

@@ -11,25 +11,45 @@ public class ExpensesController : AppControllerBase
     private readonly IExpenseService _expenses;
     private readonly IIncomeService _incomes;
     private readonly IBudgetService _budgets;
+    private readonly ICategoryService _categories;
 
     public ExpensesController(
         IAuthService auth,
         IExpenseService expenses,
         IIncomeService incomes,
-        IBudgetService budgets) : base(auth)
+        IBudgetService budgets,
+        ICategoryService categories) : base(auth)
     {
         _expenses = expenses;
         _incomes = incomes;
         _budgets = budgets;
+        _categories = categories;
     }
 
-    public IActionResult Index()
+    public IActionResult Index(ListQuery query)
     {
         var now = DateTime.Now;
         var all = _expenses.GetAll(CurrentUser.Id);
+        var budgetNames = _budgets.GetAll(CurrentUser.Id).ToDictionary(b => b.Id, b => BudgetDisplay(b));
+        string BudgetName(Expense e) => e.BudgetId is int id && budgetNames.TryGetValue(id, out var n) ? n : string.Empty;
+
+        var sorts = new Dictionary<string, Func<Expense, object?>>
+        {
+            ["date"] = e => e.Date,
+            ["category"] = e => e.Category,
+            ["budget"] = e => BudgetName(e),
+            ["pool"] = e => e.IncomePool.HasValue ? (int)e.IncomePool.Value : -1,
+            ["note"] = e => e.Note,
+            ["amount"] = e => e.Amount
+        };
+        query.Normalize(sorts.Keys, defaultSort: "date");
+
         var vm = new ExpenseListViewModel
         {
-            Items = all,
+            Query = query,
+            Page = all.ToPaged(query, sorts,
+                (e, term) => ListQueryExtensions.AnyContains(term, e.Category, e.Note, BudgetName(e))),
+            RecordCount = all.Count,
             Currency = CurrentUser.Currency,
             Total = all.Sum(e => e.Amount),
             MonthTotal = all.Where(e => e.Date.Year == now.Year && e.Date.Month == now.Month).Sum(e => e.Amount),
@@ -41,8 +61,12 @@ public class ExpensesController : AppControllerBase
             TotalIncome = _incomes.Total(CurrentUser.Id),
 
             // Budget name lookup for the “deducted from” column.
-            BudgetNames = _budgets.GetAll(CurrentUser.Id)
-                .ToDictionary(b => b.Id, b => BudgetDisplay(b))
+            BudgetNames = budgetNames,
+
+            // Totals grouped by deduction period for the summary cards —
+            // the same shared computation the Income page's remaining-
+            // balance cards subtract, so both pages always agree.
+            PoolBreakdown = _expenses.TotalsByPool(CurrentUser.Id)
         };
         ViewData["Title"] = "Expenses";
         ViewData["ActiveNav"] = "expenses";
@@ -70,7 +94,7 @@ public class ExpensesController : AppControllerBase
 
         if (!ModelState.IsValid)
         {
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
             ViewData["Title"] = "Add Expense";
             ViewData["ActiveNav"] = "expenses";
             return View("ExpenseForm", BuildExpenseForm(model));
@@ -112,7 +136,7 @@ public class ExpensesController : AppControllerBase
         ViewData["ActiveNav"] = "expenses";
         // A previously saved custom category is not in the catalog, so the
         // form selects "Other" and prefills the custom field with its value.
-        var isCustomCategory = !Catalog.ExpenseCategories.Contains(expense.Category);
+        var isCustomCategory = !_categories.GetActive(CategoryType.Expense).Contains(expense.Category, StringComparer.OrdinalIgnoreCase);
         return View("ExpenseForm", BuildExpenseForm(new ExpenseFormViewModel
         {
             Id = expense.Id,
@@ -138,7 +162,7 @@ public class ExpensesController : AppControllerBase
 
         if (!ModelState.IsValid)
         {
-            RestoreCategoryForDisplay(model);
+            RestoreCategoryForDisplay(model, _categories.GetActive(CategoryType.Expense));
             ViewData["Title"] = "Edit Expense";
             ViewData["ActiveNav"] = "expenses";
             return View("ExpenseForm", BuildExpenseForm(model));
@@ -165,17 +189,20 @@ public class ExpensesController : AppControllerBase
 
     // ------------------------------------------------------------ export
 
-    /// <summary>Downloads every expense record as CSV.</summary>
+    /// <summary>Downloads every expense record as an Excel workbook.</summary>
     [HttpGet]
     public IActionResult Export()
     {
         var items = _expenses.GetAll(CurrentUser.Id);
-        var csv = new Helpers.CsvFile("Date", "Category", "Amount", "Currency", "Note");
+        var csv = new Helpers.XlsxFile(Helpers.Format.Symbol(CurrentUser.Currency),
+            new[] { "Date", "Category", "Amount", "Currency", "Note" },
+            Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Currency,
+            Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text);
         foreach (var item in items)
         {
             csv.AddRow(item.Date, item.Category, item.Amount, CurrentUser.Currency, item.Note);
         }
-        return csv.ToFileResult($"finapp-expenses-{DateTime.Today:yyyy-MM-dd}.csv");
+        return csv.ToFileResult($"finapp-expenses-{DateTime.Today:yyyy-MM-dd}.xlsx");
     }
 
     // ------------------------------------------------------------ delete
@@ -199,8 +226,10 @@ public class ExpensesController : AppControllerBase
     /// target; the ledger lets the browser show the live pool balance.</summary>
     private ExpenseFormViewModel BuildExpenseForm(ExpenseFormViewModel model)
     {
-        model.Budgets = _budgets.GetOptionsForExpense(
-            CurrentUser.Id, model.Category, model.Date);
+        // Admin-managed category catalog drives the dropdown; falls back to the built-in list.
+        ViewBag.Categories = _categories.GetActive(CategoryType.Expense);
+
+        model.Budgets = _budgets.GetOptionsForExpense(CurrentUser.Id, model.Category, model.Date);
 
         model.PoolLedger = _incomes.GetAll(CurrentUser.Id)
             .Select(i => new PoolLedgerEntry
@@ -247,11 +276,11 @@ public class ExpensesController : AppControllerBase
     /// <summary>For validation-failure re-renders after a successful "Other"
     /// mapping: re-selects "Other" and keeps the typed value so the user
     /// still sees the custom category that was applied.</summary>
-    private static void RestoreCategoryForDisplay(ExpenseFormViewModel model)
+    private static void RestoreCategoryForDisplay(ExpenseFormViewModel model, IReadOnlyList<string> catalog)
     {
         if (model.CustomCategory is { } custom &&
             custom.Length > 0 &&
-            !Catalog.ExpenseCategories.Contains(model.Category, StringComparer.OrdinalIgnoreCase) &&
+            !catalog.Contains(model.Category, StringComparer.OrdinalIgnoreCase) &&
             model.Category.Equals(custom, StringComparison.OrdinalIgnoreCase))
         {
             model.Category = "Other";
@@ -320,13 +349,7 @@ public class ExpensesController : AppControllerBase
         return budget;
     }
 
-    /// <summary>Short table label for a budget, e.g. “Groceries · monthly”.</summary>
+    /// <summary>Short table label for a budget, e.g. “Groceries · Jan 1 – Jan 31, 2026”.</summary>
     private static string BudgetDisplay(Budget budget) =>
-        $"{budget.Category} · {budget.Period switch
-        {
-            BudgetPeriod.Daily => $"daily ({budget.PeriodStart:MMM d})",
-            BudgetPeriod.Weekly => $"weekly ({budget.PeriodStart:MMM d}–{budget.PeriodEnd:MMM d})",
-            BudgetPeriod.Yearly => $"yearly ({budget.Year})",
-            _ => $"monthly ({budget.PeriodStart:MMM yyyy})"
-        }}";
+        $"{budget.Category} · {budget.StartDate:MMM d} – {budget.EndDate:MMM d, yyyy}";
 }

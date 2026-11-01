@@ -1,5 +1,6 @@
 using PersonalFinanceManagementSystem.Data;
 using PersonalFinanceManagementSystem.Models;
+using PersonalFinanceManagementSystem.Models.ViewModels;
 
 namespace PersonalFinanceManagementSystem.Services;
 
@@ -11,6 +12,52 @@ public class ExpenseService : IExpenseService
     {
         _db = db;
     }
+
+    // ------------------------------------------------------------
+    // Totals grouped by income deduction period
+    // ------------------------------------------------------------
+
+    // Groups expenses by the income pool the user picked when saving.
+    // The pooling query reads the live Expenses table on every call, so
+    // adding, editing or deleting a record updates the totals on the next
+    // read — no stored counter exists to fall out of sync. Each expense is
+    // counted exactly once, in the slice of its own IncomePool only;
+    // pre-pool records (IncomePool null) belong to no period.
+    public List<PoolSpentSlice> TotalsByPool(int userId)
+    {
+        var rows = _db.Expenses
+            .Where(e => e.UserId == userId)
+            .Select(e => new { e.IncomePool, e.Amount })
+            .ToList(); // enum comparison happens in memory — never in SQL
+
+        var pools = rows
+            .Where(r => r.IncomePool is not null)
+            .GroupBy(r => r.IncomePool!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => (Spent: g.Sum(r => r.Amount), Count: g.Count()));
+
+        return new[]
+            {
+                IncomePeriod.Daily, IncomePeriod.Weekly,
+                IncomePeriod.Monthly, IncomePeriod.Yearly
+            } // ordered smallest to largest period
+            .OrderBy(p => (int)p)
+            .Select(p => pools.TryGetValue(p, out var t)
+                ? new PoolSpentSlice { Period = p, Label = p.ToString(), Tint = TintFor(p), Spent = t.Spent, Count = t.Count }
+                : new PoolSpentSlice { Period = p, Label = p.ToString(), Tint = TintFor(p) })
+            .ToList();
+    }
+
+    /// <summary>Icon tint per income period, shared with the Income page's
+    /// remaining-balance cards so the same period reads the same color.</summary>
+    internal static string TintFor(IncomePeriod period) => period switch
+    {
+        IncomePeriod.Daily => "tint-sky",
+        IncomePeriod.Weekly => "tint-amber",
+        IncomePeriod.Yearly => "tint-indigo",
+        _ => "tint-green"
+    };
 
     public List<Expense> GetAll(int userId)
     {
@@ -33,6 +80,12 @@ public class ExpenseService : IExpenseService
         _db.SaveChanges();
 
         return expense;
+    }
+
+    public void AddRange(IEnumerable<Expense> expenses)
+    {
+        _db.Expenses.AddRange(expenses);
+        _db.SaveChanges();
     }
 
     public bool Update(Expense expense)
@@ -135,10 +188,12 @@ public class ExpenseService : IExpenseService
             .Select(g => new CategorySlice
             {
                 Category = g.Key,
-                Amount = g.Sum(e => e.Amount)
+                Amount = g.Sum(e => e.Amount),
+                Count = g.Count()
             })
             .OrderByDescending(x => x.Amount)
-            .ToList();
+            .ToList()
+            .WithPercentOf(null);
     }
 
     // Top spending categories for an entire year
@@ -147,7 +202,7 @@ public class ExpenseService : IExpenseService
         int year,
         int top)
     {
-        return _db.Expenses
+        var slices = _db.Expenses
             .Where(e =>
                 e.UserId == userId &&
                 e.Date.Year == year)
@@ -155,11 +210,15 @@ public class ExpenseService : IExpenseService
             .Select(g => new CategorySlice
             {
                 Category = g.Key,
-                Amount = g.Sum(e => e.Amount)
+                Amount = g.Sum(e => e.Amount),
+                Count = g.Count()
             })
             .OrderByDescending(x => x.Amount)
-            .Take(top)
             .ToList();
+
+        // Percent is a share of the whole year, not just of the top N shown.
+        var yearTotal = slices.Sum(x => x.Amount);
+        return slices.Take(top).ToList().WithPercentOf(yearTotal);
     }
 
     // Largest expense for one month
@@ -220,5 +279,20 @@ public class ExpenseService : IExpenseService
         }
 
         return income - spent;
+    }
+}
+
+internal static class CategorySliceExtensions
+{
+    /// <summary>Fills each slice's Percent as its share of <paramref name="total"/>
+    /// (or of the slices' own sum when total is null).</summary>
+    public static List<CategorySlice> WithPercentOf(this List<CategorySlice> slices, decimal? total)
+    {
+        var sum = total ?? slices.Sum(x => x.Amount);
+        foreach (var s in slices)
+        {
+            s.Percent = sum > 0 ? Math.Round(s.Amount / sum * 100, 1) : 0;
+        }
+        return slices;
     }
 }

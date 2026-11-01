@@ -25,42 +25,61 @@
             }
         </select>
     </form>
-    <a class="btn btn-soft" asp-action="ExportExpenseAnalysis" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportExpenseAnalysis" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportExpenseAnalysisPdf" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
+    </div>
 </div>
 
 <div class="row g-3">
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
-            <div class="stat-label">Total spent</div>
-            <div class="stat-value text-neg">@Format.Money(Model.Total, cur)</div>
-            <div class="stat-foot">@Model.MonthLabel</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
-            <div class="stat-label">Average per day</div>
-            <div class="stat-value">@Format.Money(Model.AveragePerDay, cur)</div>
-            <div class="stat-foot">across the month</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-up"/></svg></span>
-            <div class="stat-label">Biggest expense</div>
-            <div class="stat-value">@Format.Money(Model.LargestExpense?.Amount ?? 0, cur)</div>
-            <div class="stat-foot">@(Model.LargestExpense is null ? "no expenses" : $"{Model.LargestExpense.Category} · {Format.Date(Model.LargestExpense.Date)}")</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon @(rising ? "tint-red" : "tint-green")"><svg class="ico"><use href="#@(rising ? "i-up" : "i-down")"/></svg></span>
-            <div class="stat-label">vs previous month</div>
-            <div class="stat-value @(rising ? "text-neg" : "text-pos")">
-                @(Model.PreviousMonthTotal > 0 ? $"{(rising ? "+" : "")}{Format.Pct(Model.ChangePercent)}%" : "—")
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total spent</div>
+                    <div class="stat-value text-neg">@Format.Money(Model.Total, cur)</div>
+                    <div class="stat-foot">@Model.MonthLabel</div>
+                </div>
+                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
             </div>
-            <div class="stat-foot">prev: @Format.Money(Model.PreviousMonthTotal, cur)</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Average per day</div>
+                    <div class="stat-value">@Format.Money(Model.AveragePerDay, cur)</div>
+                    <div class="stat-foot">across the month</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Biggest expense</div>
+                    <div class="stat-value">@Format.Money(Model.LargestExpense?.Amount ?? 0, cur)</div>
+                    <div class="stat-foot">@(Model.LargestExpense is null ? "no expenses" : $"{Model.LargestExpense.Category} · {Format.Date(Model.LargestExpense.Date)}")</div>
+                </div>
+                <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-up"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">vs previous month</div>
+                    <div class="stat-value @(rising ? "text-neg" : "text-pos")">
+                        @(Model.PreviousMonthTotal > 0 ? $"{(rising ? "+" : "")}{Format.Pct(Model.ChangePercent)}%" : "—")
+                    </div>
+                    <div class="stat-foot">prev: @Format.Money(Model.PreviousMonthTotal, cur)</div>
+                </div>
+                <span class="stat-icon @(rising ? "tint-red" : "tint-green")"><svg class="ico"><use href="#@(rising ? "i-up" : "i-down")"/></svg></span>
+            </div>
         </div>
     </div>
 </div>
@@ -92,7 +111,8 @@
                                     var len = (double)(s.Amount / total) * donutC;
                                     <circle cx="60" cy="60" r="48" fill="none" stroke="@Format.CategoryColor(s.Category)" stroke-width="18"
                                             stroke-dasharray="@Format.Num(len) @Format.Num(donutC - len)"
-                                            stroke-dashoffset="@Format.Num(-offset)"/>
+                                            stroke-dashoffset="@Format.Num(-offset)" class="donut-slice" tabindex="0"
+                                            data-tooltip="@ChartTip.Build(s.Category, ("Spent", Format.Money(s.Amount, cur), Format.CategoryColor(s.Category)), ("Share", Format.Pct(s.Percent) + "%", null), ("Transactions", s.Count.ToString(), null))"/>
                                     offset += len;
                                 }
                                 <text x="60" y="56" text-anchor="middle" class="donut-value">@Format.Money0(total, cur)</text>

@@ -1,0 +1,25 @@
+@* Admin console navigation — rendered in the desktop sidebar and in the mobile drawer. *@
+@{
+    var active = (ViewData["ActiveNav"] as string) ?? "";
+    var items = new (string Key, string Controller, string Text, string Icon)[]
+
+    {
+        ("dashboard", "Dashboard", "Admin Dashboard", "i-dashboard"),
+        ("users", "Users", "User Management", "i-users"),
+        ("categories", "Categories", "Categories", "i-tags"),
+        ("reports", "Reports", "System Reports", "i-report"),
+        ("activity", "ActivityLogs", "Activity Logs", "i-activity"),
+        ("settings", "Settings", "Admin Settings", "i-settings")
+    };
+}
+<nav class="nav-fin admin-nav" aria-label="Admin">
+    @foreach (var (key, controller, text, icon) in items)
+    {
+        var isActive = active == key;
+        <a class="nav-link-fin @(isActive ? "active" : "")" asp-controller="@controller" asp-action="Index"
+           data-tip="@text" aria-current="@(isActive ? "page" : null)">
+            <svg class="ico"><use href="#@icon"/></svg>
+            <span class="nav-text">@text</span>
+        </a>
+    }
+</nav>

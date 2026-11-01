@@ -1,0 +1,168 @@
+@model RecurringTransactionFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+}
+
+<div class="form-card card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Recurring transaction details</h2>
+            <div class="card-sub">Type, label, amount, how often it repeats, and when</div>
+        </div>
+    </div>
+
+    <div class="card-body-fin">
+        <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+
+        <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" novalidate>
+            <input type="hidden" asp-for="Id" />
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="Type" class="form-label">Type</label>
+                    <select asp-for="Type" id="typeSelect" class="form-select">
+                        <option value="@RecurringTransactionType.Expense">Expense (bill)</option>
+                        <option value="@RecurringTransactionType.Income">Income (paycheck)</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="Label" class="form-label" id="labelFieldLabel">@(Model.Type == RecurringTransactionType.Expense ? "Category" : "Source")</label>
+                    <select asp-for="Label" id="labelSelect" class="form-select">
+                        <option value="">Choose…</option>
+                        @foreach (var option in (IReadOnlyList<string>?)ViewBag.LabelOptions ?? (Model.Type == RecurringTransactionType.Expense ? Catalog.ExpenseCategories : Catalog.IncomeSources))
+                        {
+                            <option value="@option" selected="@(option == Model.Label)">@option</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Label" class="text-danger small"></span>
+
+                    <div id="customLabelField" class="mt-2" style="@(Model.Label == "Other" ? "" : "display:none")">
+                        <label for="CustomLabel" class="form-label">Custom label</label>
+                        <input asp-for="CustomLabel" type="text" class="form-control" maxlength="100" />
+                        <span asp-validation-for="CustomLabel" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="Amount" class="form-label">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text">@Format.Symbol(ViewBag.User?.Currency)</span>
+                        <input asp-for="Amount" type="number" step="0.01" min="0.01" class="form-control" placeholder="0.00" />
+                    </div>
+                    <span asp-validation-for="Amount" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="Frequency" class="form-label">Repeats</label>
+                    <select asp-for="Frequency" class="form-select">
+                        <option value="@RecurrenceFrequency.Daily">Daily</option>
+                        <option value="@RecurrenceFrequency.Weekly">Weekly</option>
+                        <option value="@RecurrenceFrequency.Biweekly">Every 2 weeks</option>
+                        <option value="@RecurrenceFrequency.Monthly">Monthly</option>
+                        <option value="@RecurrenceFrequency.Yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="StartDate" class="form-label">Start date</label>
+                    <input asp-for="StartDate" type="date" class="form-control" />
+                    <span asp-validation-for="StartDate" class="text-danger small"></span>
+                    <div class="small text-muted mt-1">First occurrence — also sets the day-of-month/weekday pattern.</div>
+                </div>
+                <div class="col-md-6 col-xl-4">
+                    <label asp-for="EndDate" class="form-label">End date <span class="text-muted fw-normal">(optional)</span></label>
+                    <input asp-for="EndDate" type="date" class="form-control" />
+                    <span asp-validation-for="EndDate" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 col-xl-4" id="poolField" style="@(Model.Type == RecurringTransactionType.Expense ? "" : "display:none")">
+                    <label asp-for="IncomePool" class="form-label">Income period to deduct from</label>
+                    <select asp-for="IncomePool" class="form-select">
+                        <option value="@IncomePeriod.Daily">Daily income</option>
+                        <option value="@IncomePeriod.Weekly">Weekly income</option>
+                        <option value="@IncomePeriod.Monthly">Monthly income</option>
+                        <option value="@IncomePeriod.Yearly">Yearly income</option>
+                    </select>
+                    <span asp-validation-for="IncomePool" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 col-xl-4" id="budgetField" style="@(Model.Type == RecurringTransactionType.Expense ? "" : "display:none")">
+                    <label asp-for="BudgetId" class="form-label">Budget <span class="text-muted fw-normal">(optional)</span></label>
+                    <select asp-for="BudgetId" class="form-select">
+                        <option value="">No budget</option>
+                        @foreach (var option in Model.Budgets)
+                        {
+                            <option value="@option.Id" data-category="@option.Category" selected="@(Model.BudgetId == option.Id)">@option.Category</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BudgetId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 col-xl-4 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
+                        <label asp-for="IsActive" class="form-check-label">Active</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Note" class="form-label">Note <span class="text-muted fw-normal">(optional)</span></label>
+                    <input asp-for="Note" class="form-control" placeholder="e.g. Autopay from checking" />
+                    <span asp-validation-for="Note" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="form-actions">
+                <a class="btn btn-soft" asp-action="Index">Cancel</a>
+                <button type="submit" class="btn btn-fin">@(isEdit ? "Save changes" : "Add recurring transaction")</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Type toggles which catalog populates Label (expense categories vs income
+   sources), and shows/hides the budget + income-pool fields — they only
+   apply to recurring expenses. *@
+<script>
+(function () {
+    var expenseCategories = @Html.Raw(Json.Serialize((IReadOnlyList<string>?)ViewBag.ExpenseOptions ?? Catalog.ExpenseCategories));
+    var incomeSources = @Html.Raw(Json.Serialize((IReadOnlyList<string>?)ViewBag.IncomeOptions ?? Catalog.IncomeSources));
+    var currentLabel = @Html.Raw(Json.Serialize(Model.Label));
+    var currentType = '@Model.Type';
+
+    var typeSelect = document.getElementById('typeSelect');
+    var labelSelect = document.getElementById('labelSelect');
+    var labelFieldLabel = document.getElementById('labelFieldLabel');
+    var customField = document.getElementById('customLabelField');
+    var customInput = document.getElementById('CustomLabel');
+    var poolField = document.getElementById('poolField');
+    var budgetField = document.getElementById('budgetField');
+    if (!typeSelect || !labelSelect) return;
+
+    typeSelect.value = currentType;
+
+    function populateLabels() {
+        var isExpense = typeSelect.value === 'Expense';
+        labelFieldLabel.textContent = isExpense ? 'Category' : 'Source';
+        var catalog = isExpense ? expenseCategories : incomeSources;
+
+        labelSelect.innerHTML = '<option value="">Choose…</option>';
+        for (var i = 0; i < catalog.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = catalog[i];
+            opt.textContent = catalog[i];
+            labelSelect.appendChild(opt);
+        }
+        labelSelect.value = catalog.indexOf(currentLabel) >= 0 ? currentLabel : (currentLabel === 'Other' ? 'Other' : '');
+
+        poolField.style.display = isExpense ? '' : 'none';
+        budgetField.style.display = isExpense ? '' : 'none';
+    }
+
+    function updateCustomLabelField() {
+        if (labelSelect.value === 'Other') {
+            customField.style.display = '';
+        } else {
+            customField.style.display = 'none';
+            if (customInput) customInput.value = '';
+        }
+    }
+
+    typeSelect.addEventListener('change', function () { populateLabels(); updateCustomLabelField(); });
+    labelSelect.addEventListener('change', updateCustomLabelField);
+
+    populateLabels();
+    updateCustomLabelField();
+})();
+</script>

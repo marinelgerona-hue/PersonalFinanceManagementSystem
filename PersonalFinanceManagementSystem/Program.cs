@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PersonalFinanceManagementSystem;
 using PersonalFinanceManagementSystem.Data;
 using PersonalFinanceManagementSystem.Services;
 
@@ -35,7 +36,18 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();
 
 builder.Services.AddScoped<IReportService, ReportService>();
+
+builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
+
+// Admin console
+builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
 var app = builder.Build();
+
+// Apply migrations and seed the default admin + category catalog (idempotent).
+StartupSeeder.Run(app.Services);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -53,6 +65,12 @@ app.UseSession();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+// The separate Admin side lives in the "Admin" area and matches first, so
+// its own controllers (AdminDashboard/Users/…) never collide with user routes.
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",

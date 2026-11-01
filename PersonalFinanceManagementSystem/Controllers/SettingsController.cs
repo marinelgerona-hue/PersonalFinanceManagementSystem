@@ -8,96 +8,76 @@ namespace PersonalFinanceManagementSystem.Controllers;
 /// <summary>Settings — view and update basic user information and password.</summary>
 public class SettingsController : AppControllerBase
 {
-    /// <summary>Maximum accepted profile picture size (1 MB once Base64-encoded).</summary>
-    private const long MaxPhotoLength = 1_000_000;
+    /// <summary>Maximum accepted profile picture size (2 MB once Base64-encoded).</summary>
+    private const long MaxPhotoLength = 2_000_000;
 
     private static readonly string[] AllowedPhotoTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
 
-    public SettingsController(IAuthService auth) : base(auth) { }
+    /// <summary>Name prefix of the change-password form fields.</summary>
+    public const string PasswordFormPrefix = "changePassword";
+
+    private readonly IActivityLogger _activity;
+
+    public SettingsController(IAuthService auth, IActivityLogger activity) : base(auth)
+    {
+        _activity = activity;
+    }
 
     public IActionResult Index()
     {
-        ViewData["Title"] = "Settings";
-        ViewData["ActiveNav"] = "settings";
-        return View(new SettingsViewModel
-        {
-            FullName = CurrentUser.FullName,
-            Email = CurrentUser.Email,
-            Phone = CurrentUser.Phone,
-            Currency = CurrentUser.Currency,
-            ProfileImage = CurrentUser.ProfileImage,
-            MemberSince = CurrentUser.CreatedAt
-        });
+        SetPageInfo();
+        return View(BuildModel());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult UpdateProfile(SettingsViewModel model)
+    public IActionResult UpdateProfile(SettingsViewModel model, string? returnTab)
     {
-        ViewData["Title"] = "Settings";
-        ViewData["ActiveNav"] = "settings";
+        SetPageInfo();
 
         if (!ModelState.IsValid)
         {
-            model.MemberSince = CurrentUser.CreatedAt;
-            return View("Index", model);
+            return View("Index", WithAccountInfo(model));
         }
 
-        var error = Auth.UpdateProfile(CurrentUser.Id, model.FullName, model.Email, model.Phone ?? "", model.Currency);
+        var error = Auth.UpdateProfile(CurrentUser.Id, model.FullName, model.Email, model.FullPhone, model.Currency);
         if (error.Length > 0)
         {
             ModelState.AddModelError(nameof(model.Email), error);
-            model.MemberSince = CurrentUser.CreatedAt;
-            return View("Index", model);
+            return View("Index", WithAccountInfo(model));
         }
 
-        // Refresh ViewBag user after the profile change.
-        var updated = Auth.GetCurrentUser(HttpContext);
-        if (updated is not null)
-        {
-            CurrentUser = updated;
-            ViewBag.User = updated;
-        }
-
-        TempData["Success"] = "Profile updated.";
-        return RedirectToAction(nameof(Index));
+        RefreshCurrentUser();
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Profile updated",
+            $"Updated profile details (name: {model.FullName}, email: {model.Email}).");
+        TempData["ToastTitle"] = "Settings saved";
+        TempData["Success"] = "Your profile and preferences are up to date.";
+        return RedirectToTab(returnTab == "preferences" ? "preferences" : "profile");
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult ChangePassword(ChangePasswordViewModel model)
+    // The form's fields are named "changePassword.*" (see Views/Settings/Index.cshtml), so bind with that prefix.
+    public IActionResult ChangePassword([Bind(Prefix = PasswordFormPrefix)] ChangePasswordViewModel model)
     {
-        ViewData["Title"] = "Settings";
-        ViewData["ActiveNav"] = "settings";
+        SetPageInfo();
 
         if (!ModelState.IsValid)
         {
-            return View("Index", new SettingsViewModel
-            {
-                FullName = CurrentUser.FullName,
-                Email = CurrentUser.Email,
-                Phone = CurrentUser.Phone,
-                Currency = CurrentUser.Currency,
-                MemberSince = CurrentUser.CreatedAt
-            });
+            return View("Index", BuildModel());
         }
 
-        var ok = Auth.ChangePassword(CurrentUser.Id, model.CurrentPassword, model.NewPassword);
-        if (!ok)
+        if (!Auth.ChangePassword(CurrentUser.Id, model.CurrentPassword, model.NewPassword))
         {
-            ModelState.AddModelError(nameof(model.CurrentPassword), "Your current password is incorrect.");
-            return View("Index", new SettingsViewModel
-            {
-                FullName = CurrentUser.FullName,
-                Email = CurrentUser.Email,
-                Phone = CurrentUser.Phone,
-                Currency = CurrentUser.Currency,
-                MemberSince = CurrentUser.CreatedAt
-            });
+            ModelState.AddModelError($"{PasswordFormPrefix}.{nameof(model.CurrentPassword)}", "Your current password is incorrect.");
+            return View("Index", BuildModel());
         }
 
-        TempData["Success"] = "Password changed successfully.";
-        return RedirectToAction(nameof(Index));
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Password changed",
+            "Changed account password from Settings.");
+        TempData["ToastTitle"] = "Password updated";
+        TempData["Success"] = "Use your new password the next time you sign in.";
+        return RedirectToTab("change-password");
     }
 
     [HttpPost]
@@ -105,9 +85,6 @@ public class SettingsController : AppControllerBase
     [RequestSizeLimit(MaxPhotoLength + 65_000)] // headroom for multipart/base64 encoding
     public IActionResult UploadPhoto(IFormFile? photo)
     {
-        ViewData["Title"] = "Settings";
-        ViewData["ActiveNav"] = "settings";
-
         if (photo is null || photo.Length == 0)
         {
             TempData["Error"] = "Please choose an image file first.";
@@ -116,7 +93,7 @@ public class SettingsController : AppControllerBase
 
         if (photo.Length > MaxPhotoLength)
         {
-            TempData["Error"] = "Image is too large. Please choose a picture under 1 MB.";
+            TempData["Error"] = "Image is too large. Please choose a picture under 2 MB.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -148,6 +125,38 @@ public class SettingsController : AppControllerBase
         TempData["Success"] = "Profile picture removed.";
         return RedirectToAction(nameof(Index));
     }
+
+    private void SetPageInfo()
+    {
+        ViewData["Title"] = "Settings";
+        ViewData["Subtitle"] = "Manage your profile, preferences and account security.";
+        ViewData["ActiveNav"] = "settings";
+    }
+
+    /// <summary>The settings form pre-filled from the signed-in user.</summary>
+    private SettingsViewModel BuildModel()
+    {
+        var (iso, national) = Catalog.SplitPhone(CurrentUser.Phone);
+        return WithAccountInfo(new SettingsViewModel
+        {
+            FullName = CurrentUser.FullName,
+            Email = CurrentUser.Email,
+            PhoneCountry = iso,
+            Phone = national,
+            Currency = CurrentUser.Currency
+        });
+    }
+
+    /// <summary>Fills the read-only account details that aren't posted back with the form.</summary>
+    private SettingsViewModel WithAccountInfo(SettingsViewModel model)
+    {
+        model.ProfileImage = CurrentUser.ProfileImage;
+        model.MemberSince = CurrentUser.CreatedAt;
+        return model;
+    }
+
+    /// <summary>Back to the settings page with the given tab open (tabs are selected by URL fragment).</summary>
+    private IActionResult RedirectToTab(string tab) => RedirectToAction(nameof(Index), null, null, tab);
 
     /// <summary>Reloads the signed-in user so the layout shows fresh data.</summary>
     private void RefreshCurrentUser()

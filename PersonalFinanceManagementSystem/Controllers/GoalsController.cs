@@ -13,12 +13,29 @@ public class GoalsController : AppControllerBase
     public GoalsController(IAuthService auth, ISavingsGoalService goals) : base(auth)
         => _goals = goals;
 
-    public IActionResult Index()
+    /// <summary>Sort options for the goal cards.</summary>
+    private static readonly Dictionary<string, Func<GoalProgress, object?>> GoalSorts = new()
+    {
+        ["progress"] = g => g.Percent,
+        ["deadline"] = g => g.Goal.Deadline ?? DateTime.MaxValue, // no deadline sorts last
+        ["name"] = g => g.Goal.Name,
+        ["saved"] = g => g.Saved,
+        ["remaining"] = g => g.Remaining
+    };
+
+    public static readonly int[] GoalPageSizes = { 6, 12, 24 };
+
+    public IActionResult Index(ListQuery query)
     {
         var now = DateTime.Now;
+        var items = _goals.GetProgress(CurrentUser.Id);
+        query.Normalize(GoalSorts.Keys, defaultSort: "deadline", defaultDir: "asc", sizes: GoalPageSizes);
         var vm = new GoalListViewModel
         {
-            Items = _goals.GetProgress(CurrentUser.Id),
+            Items = items,
+            Query = query,
+            Page = items.ToPaged(query, GoalSorts,
+                (g, term) => ListQueryExtensions.AnyContains(term, g.Goal.Name, g.Goal.Note, g.Status)),
             Currency = CurrentUser.Currency,
             ThisMonthSaved = _goals.SavedInMonth(CurrentUser.Id, now.Year, now.Month)
         };
@@ -114,33 +131,33 @@ public class GoalsController : AppControllerBase
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult AddFunds(AddFundsViewModel model)
+    public IActionResult AddFunds(AddFundsViewModel model, string? returnUrl)
     {
         if (!ModelState.IsValid)
         {
             TempData["Error"] = string.Join(" ", ModelState.Values
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage));
-            return RedirectToAction(nameof(Index));
+            return RedirectToReturnUrl(returnUrl);
         }
 
         var ok = _goals.AddFunds(CurrentUser.Id, model.GoalId, model.Amount, model.Date, model.Note ?? string.Empty);
         TempData[ok ? "Success" : "Error"] = ok
             ? $"{Helpers.Format.Money(model.Amount, CurrentUser.Currency)} added to \"{model.GoalName}\"."
             : "Goal was not found.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToReturnUrl(returnUrl);
     }
 
     // ------------------------------------------------------------ delete
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Delete(int id)
+    public IActionResult Delete(int id, string? returnUrl)
     {
         var deleted = _goals.Delete(CurrentUser.Id, id);
         TempData[deleted ? "Success" : "Error"] = deleted
             ? "Goal deleted and its funds returned to your balance."
             : "Goal was not found.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToReturnUrl(returnUrl);
     }
 }

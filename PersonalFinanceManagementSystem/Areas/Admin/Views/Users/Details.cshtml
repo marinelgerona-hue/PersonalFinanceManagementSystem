@@ -1,0 +1,169 @@
+@model AdminUserDetailsViewModel
+@{
+    var u = Model.User;
+    var isSelf = u.Id == Model.CurrentAdminId;
+    var initials = string.Join("", u.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])));
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-body-fin">
+                <div class="d-flex align-items-center gap-3">
+                    @if (string.IsNullOrEmpty(u.ProfileImage))
+                    {
+                        <span class="avatar">@initials</span>
+                    }
+                    else
+                    {
+                        <span class="avatar"><img src="@u.ProfileImage" alt="" class="avatar-img" /></span>
+                    }
+                    <div>
+                        <div class="account-name fs-5">@u.FullName</div>
+                        <div class="account-mail">@u.Email</div>
+                        <div class="mt-2 d-flex gap-2 flex-wrap">
+                            @if (u.Role == UserRoles.Admin)
+                            {
+                                <span class="chip chip-admin"><svg class="ico-sm"><use href="#i-shield"/></svg> Administrator</span>
+                            }
+                            else
+                            {
+                                <span class="chip chip-muted">User</span>
+                            }
+                            @if (u.IsActive)
+                            {
+                                <span class="chip chip-success"><span class="dot dot-green"></span> Active</span>
+                            }
+                            else
+                            {
+                                <span class="chip chip-warning"><span class="dot dot-amber" style="background:#f59e0b"></span> Deactivated</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="fin-hr" />
+                <dl class="detail-list">
+                    <div><dt>Phone</dt><dd>@(string.IsNullOrWhiteSpace(u.Phone) ? "—" : u.Phone)</dd></div>
+                    <div><dt>Currency</dt><dd>@u.Currency</dd></div>
+                    <div><dt>Registered</dt><dd>@u.CreatedAt.ToString("MMMM d, yyyy, h:mm tt")</dd></div>
+                    <div><dt>Account</dt><dd>#@u.Id</dd></div>
+                </dl>
+
+                <div class="d-flex gap-2 mt-3 flex-wrap">
+                    <a class="btn btn-soft btn-sm" asp-action="Edit" asp-route-id="@u.Id"><svg class="ico-sm"><use href="#i-edit"/></svg> Edit details</a>
+                    @if (!isSelf)
+                    {
+                        if (u.IsActive)
+                        {
+                            <form asp-action="Deactivate" asp-route-id="@u.Id" method="post" class="m-0">
+                                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                <button type="submit" class="btn btn-soft btn-sm"><svg class="ico-sm"><use href="#i-lock"/></svg> Deactivate</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Activate" asp-route-id="@u.Id" method="post" class="m-0">
+                                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                <button type="submit" class="btn btn-soft btn-sm"><svg class="ico-sm"><use href="#i-circle-check"/></svg> Activate</button>
+                            </form>
+                            <form asp-action="Delete" asp-route-id="@u.Id" method="post" class="m-0"
+                                  onsubmit="return confirm('Delete @u.FullName permanently? The account and all of its financial records are removed.');">
+                                <button type="submit" class="btn-soft btn-sm btn btn-danger btn-sm"><svg class="ico-sm"><use href="#i-trash"/></svg> Delete</button>
+                            </form>
+                        }
+                    }
+                    else
+                    {
+                        <span class="small text-muted" title="You cannot act on your own account here">This is your own account</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Data summary</h2>
+                    <div class="card-sub">Counts only — the contents of @u.FullName's financial records stay private</div>
+                </div>
+            </div>
+            <div class="card-body-fin">
+                <div class="row g-3">
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.IncomeRecords)</span>
+                            <span class="mini-box-label">Income records</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.ExpenseRecords)</span>
+                            <span class="mini-box-label">Expense records</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.Budgets)</span>
+                            <span class="mini-box-label">Budgets</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.Goals)</span>
+                            <span class="mini-box-label">Savings goals</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.RecurringDefinitions)</span>
+                            <span class="mini-box-label">Recurring rules</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="mini-box">
+                            <span class="mini-box-value">@Format.Number(Model.ActivityEntries)</span>
+                            <span class="mini-box-label">Log entries</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Recent account activity</h2>
+            <div class="card-sub">Newest entries for this account</div>
+        </div>
+        <a class="btn btn-soft btn-sm" asp-controller="ActivityLogs" asp-action="Index" asp-route-user="@u.Id">Full log</a>
+    </div>
+    <div class="card-body-fin">
+        @if (Model.RecentActivity.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-clock"/></svg>
+                <p>No logged activity for this account yet.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="activity-list">
+                @foreach (var l in Model.RecentActivity)
+                {
+                    <li class="activity-item">
+                        <span class="activity-dot tint-amber"><svg class="ico-sm"><use href="#i-activity"/></svg></span>
+                        <span class="activity-text">
+                            <span class="activity-title"><span class="chip chip-muted chip-sm">@l.Action</span> <span class="text-muted">@l.CreatedAt.ToString("MMM d, yyyy, h:mm tt")</span></span>
+                            <span class="activity-detail">@l.Detail</span>
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

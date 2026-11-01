@@ -6,43 +6,65 @@
 
 <partial name="_ReportsNav" />
 
-<div class="row g-3 my-3">
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
-            <div class="stat-label">Total saved</div>
-            <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
-            <div class="stat-foot">across @Model.Goals.Count goal@(Model.Goals.Count == 1 ? "" : "s")</div>
-        </div>
+<div class="d-flex align-items-center gap-2 my-3 flex-wrap">
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportSavings"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportSavingsPdf"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
-            <div class="stat-label">Combined target</div>
-            <div class="stat-value">@Format.Money(Model.TotalTarget, cur)</div>
-            <div class="stat-foot">@Format.Pct(Model.OverallPercent)% funded overall</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
-            <div class="stat-label">Added this month</div>
-            <div class="stat-value text-pos">@Format.Money(Model.ThisMonthSaved, cur)</div>
-            <div class="stat-foot">@now.ToString("MMMM yyyy")</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-check"/></svg></span>
-            <div class="stat-label">Goals completed</div>
-            <div class="stat-value">@Model.GoalsCompleted</div>
-            <div class="stat-foot">@Format.Money(Model.TotalRemaining, cur) still to save</div>
-        </div>
-    </div>
-    <a class="btn btn-soft" asp-action="ExportSavings"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
 </div>
 
 <div class="row g-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total saved</div>
+                    <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
+                    <div class="stat-foot">across @Model.Goals.Count goal@(Model.Goals.Count == 1 ? "" : "s")</div>
+                </div>
+                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Combined target</div>
+                    <div class="stat-value">@Format.Money(Model.TotalTarget, cur)</div>
+                    <div class="stat-foot">@Format.Pct(Model.OverallPercent)% funded overall</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-goal"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Added this month</div>
+                    <div class="stat-value text-pos">@Format.Money(Model.ThisMonthSaved, cur)</div>
+                    <div class="stat-foot">@now.ToString("MMMM yyyy")</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-up"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Goals completed</div>
+                    <div class="stat-value">@Model.GoalsCompleted</div>
+                    <div class="stat-foot">@Format.Money(Model.TotalRemaining, cur) still to save</div>
+                </div>
+                <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-check"/></svg></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-0">
     <div class="col-lg-5">
         <div class="card-fin h-100">
             <div class="card-head">
@@ -62,7 +84,7 @@
                         @foreach (var m in Model.MonthlyContributions)
                         {
                             var h = (double)(m.Amount / Model.MaxContribution) * 100;
-                            <div class="bar-group" title="@m.Label: @Format.Money(m.Amount, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build($"{Format.MonthName(m.Month)} {m.Year}", ("Added to goals", Format.Money(m.Amount, cur), "#10b981"))">
                                 <span class="bar-value">@Format.Money0(m.Amount, cur)</span>
                                 <div class="bar-pair bar-pair-single">
                                     <div class="bar income" style="height:@Format.Pct((decimal)h)%"></div>

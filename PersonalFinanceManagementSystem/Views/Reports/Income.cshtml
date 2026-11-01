@@ -5,43 +5,65 @@
 
 <partial name="_ReportsNav" />
 
-<div class="row g-3 my-3">
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
-            <div class="stat-label">Total income</div>
-            <div class="stat-value text-pos">@Format.Money(Model.Total, cur)</div>
-            <div class="stat-foot">@Model.RecordCount record@(Model.RecordCount == 1 ? "" : "s") all-time</div>
-        </div>
+<div class="d-flex align-items-center gap-2 my-3 flex-wrap">
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportIncome"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportIncomePdf"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
     </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
-            <div class="stat-label">This month</div>
-            <div class="stat-value">@Format.Money(Model.ThisMonth, cur)</div>
-            <div class="stat-foot">@DateTime.Now.ToString("MMMM yyyy")</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-report"/></svg></span>
-            <div class="stat-label">Average month</div>
-            <div class="stat-value">@Format.Money(Model.AverageMonthly, cur)</div>
-            <div class="stat-foot">over the last 12 months</div>
-        </div>
-    </div>
-    <div class="col-6 col-xl-3">
-        <div class="card-fin stat-card">
-            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-up"/></svg></span>
-            <div class="stat-label">Best month</div>
-            <div class="stat-value">@(Model.BestMonth is null ? "—" : Format.Money(Model.BestMonth.Income, cur))</div>
-            <div class="stat-foot">@(Model.BestMonth is null ? "no income yet" : Model.BestMonth.Label + " · last 12 months")</div>
-        </div>
-    </div>
-    <a class="btn btn-soft" asp-action="ExportIncome"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
 </div>
 
 <div class="row g-3">
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Total income</div>
+                    <div class="stat-value text-pos">@Format.Money(Model.Total, cur)</div>
+                    <div class="stat-foot">@Model.RecordCount record@(Model.RecordCount == 1 ? "" : "s") all-time</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">This month</div>
+                    <div class="stat-value">@Format.Money(Model.ThisMonth, cur)</div>
+                    <div class="stat-foot">@DateTime.Now.ToString("MMMM yyyy")</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-calendar"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Average month</div>
+                    <div class="stat-value">@Format.Money(Model.AverageMonthly, cur)</div>
+                    <div class="stat-foot">over the last 12 months</div>
+                </div>
+                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-report"/></svg></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card-fin stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Best month</div>
+                    <div class="stat-value">@(Model.BestMonth is null ? "—" : Format.Money(Model.BestMonth.Income, cur))</div>
+                    <div class="stat-foot">@(Model.BestMonth is null ? "no income yet" : Model.BestMonth.Label + " · last 12 months")</div>
+                </div>
+                <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-up"/></svg></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-0">
     <div class="col-lg-7">
         <div class="card-fin h-100">
             <div class="card-head">
@@ -61,7 +83,7 @@
                         @foreach (var t in Model.Trend)
                         {
                             var h = (double)(t.Income / Model.TrendMax) * 100;
-                            <div class="bar-group" title="@t.Label: @Format.Money(t.Income, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build($"{Format.MonthName(t.Month)} {t.Year}", ("Income", Format.Money(t.Income, cur), "#10b981"))">
                                 <div class="bar-pair bar-pair-single">
                                     <div class="bar income" style="height:@Format.Pct((decimal)h)%"></div>
                                 </div>

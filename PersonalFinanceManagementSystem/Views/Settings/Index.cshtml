@@ -1,120 +1,168 @@
 @model SettingsViewModel
 @{
+    // Named "changePassword" on purpose: the fields post as "changePassword.*", which
+    // SettingsController.ChangePassword binds with [Bind(Prefix = PasswordFormPrefix)].
     var changePassword = new ChangePasswordViewModel();
+    var initials = string.Join("", Model.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])));
+    var hasPhoto = !string.IsNullOrEmpty(Model.ProfileImage);
 }
 
-<div class="row g-3">
-    <div class="col-lg-8">
-        <div class="card-fin">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Profile information</h2>
-                    <div class="card-sub">Update your basic account details</div>
+<div class="set-layout">
+    @* ---------------------------------------------------------------- section nav *@
+    @* Tabs: one section is shown at a time (site.js). The hash (#profile, #preferences,
+       #change-password) selects the tab, so links like /Settings#change-password open it directly.
+       Without JavaScript every section stays visible. *@
+    <nav class="set-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical" data-tabs>
+        <a href="#profile" id="tab-profile" role="tab" aria-controls="profile" aria-selected="true" class="active"><svg class="ico-sm"><use href="#i-user"/></svg>Profile</a>
+        <a href="#preferences" id="tab-preferences" role="tab" aria-controls="preferences" aria-selected="false" tabindex="-1"><svg class="ico-sm"><use href="#i-globe"/></svg>Preferences</a>
+        <a href="#change-password" id="tab-change-password" role="tab" aria-controls="change-password" aria-selected="false" tabindex="-1"><svg class="ico-sm"><use href="#i-lock"/></svg>Security</a>
+    </nav>
+
+    <div class="set-sections">
+        @* ============================================================ Profile *@
+        <section class="set-card" id="profile" role="tabpanel" aria-labelledby="tab-profile" tabindex="0">
+            <header class="set-head">
+                <h2>Profile</h2>
+                <p>Your name, contact details and photo.</p>
+            </header>
+
+            <div class="set-body">
+                <div class="set-photo">
+                    <label class="form-label">Profile Picture</label>
+                    <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" id="photoForm" class="m-0">
+                        <label for="photoInput" class="dropzone" data-dropzone>
+                            <svg class="ico dropzone-ico"><use href="#i-upload-cloud"/></svg>
+                            <div class="dropzone-text">Drag &amp; drop a file here, or click to browse</div>
+                            <div class="dropzone-hint">JPG, PNG, GIF or WebP — max 2MB.</div>
+                            <input type="file" id="photoInput" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" class="d-none"
+                                   onchange="this.form.submit()" />
+                        </label>
+                    </form>
+                    @if (hasPhoto)
+                    {
+                        <div class="photo-thumb">
+                            <img src="@Model.ProfileImage" alt="Profile picture" />
+                            <form asp-action="RemovePhoto" method="post" class="m-0">
+                                <button type="submit" class="photo-thumb-remove" aria-label="Remove photo">
+                                    <svg class="ico-sm"><use href="#i-trash"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    }
                 </div>
-            </div>
-            <div class="card-body-fin">
-                <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
-                <form asp-action="UpdateProfile" method="post" novalidate>
-                    <div class="row g-3">
-                        <div class="col-md-6">
+
+                <form asp-action="UpdateProfile" method="post" novalidate id="profileForm" class="auth-form set-form">
+                    <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+                    <div class="set-grid">
+                        <div class="field">
                             <label asp-for="FullName" class="form-label"></label>
-                            <input asp-for="FullName" class="form-control" />
-                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                            <div class="field-control">
+                                <svg class="field-icon" aria-hidden="true"><use href="#i-user"/></svg>
+                                <input asp-for="FullName" class="form-control" autocomplete="name" />
+                            </div>
+                            <span asp-validation-for="FullName" class="field-error"></span>
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="Email" class="form-label"></label>
-                            <input asp-for="Email" class="form-control" />
-                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        <div class="field">
+                            <label asp-for="Email" class="form-label">Email address</label>
+                            <div class="field-control">
+                                <svg class="field-icon" aria-hidden="true"><use href="#i-mail"/></svg>
+                                <input asp-for="Email" class="form-control" autocomplete="email" />
+                            </div>
+                            <span asp-validation-for="Email" class="field-error"></span>
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="Phone" class="form-label"></label>
-                            <input asp-for="Phone" class="form-control" placeholder="+1 555 000 0000" />
-                            <span asp-validation-for="Phone" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="Currency" class="form-label"></label>
-                            <select asp-for="Currency" class="form-select">
-                                @foreach (var (code, name) in Catalog.Currencies)
-                                {
-                                    <option value="@code" selected="@(code == Model.Currency)">@name</option>
-                                }
-                            </select>
-                            <span asp-validation-for="Currency" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-fin mt-4">Save profile</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card-fin mt-3">
-            <div class="card-head">
-                <div>
-                    <h2 class="card-title">Change password</h2>
-                    <div class="card-sub">Verify your current password to set a new one</div>
-                </div>
-            </div>
-            <div class="card-body-fin">
-                <form asp-action="ChangePassword" method="post" novalidate>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label asp-for="@changePassword.CurrentPassword" class="form-label"></label>
-                            <input asp-for="@changePassword.CurrentPassword" class="form-control" autocomplete="current-password" />
-                            <span asp-validation-for="@changePassword.CurrentPassword" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-4">
-                            <label asp-for="@changePassword.NewPassword" class="form-label"></label>
-                            <input asp-for="@changePassword.NewPassword" class="form-control" autocomplete="new-password" />
-                            <span asp-validation-for="@changePassword.NewPassword" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-4">
-                            <label asp-for="@changePassword.ConfirmPassword" class="form-label"></label>
-                            <input asp-for="@changePassword.ConfirmPassword" class="form-control" autocomplete="new-password" />
-                            <span asp-validation-for="@changePassword.ConfirmPassword" class="text-danger small"></span>
+                        <div class="field">
+                            <label asp-for="Phone" class="form-label">Phone number <span class="label-optional">Optional</span></label>
+                            <div class="phone-control">
+                                <select asp-for="PhoneCountry" class="phone-country" aria-label="Country code" autocomplete="tel-country-code">
+                                    @foreach (var (iso, name, dial, flag) in Catalog.PhoneCountries)
+                                    {
+                                        <option value="@iso" data-flag="@flag" data-dial="@dial" data-name="@name" selected="@(iso == Model.PhoneCountry)">@flag @name (@dial)</option>
+                                    }
+                                </select>
+                                <input asp-for="Phone" class="form-control" placeholder="Mobile number" autocomplete="tel-national" inputmode="tel" />
+                            </div>
+                            <span asp-validation-for="Phone" class="field-error"></span>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-fin mt-4">Change password</button>
                 </form>
             </div>
-        </div>
-    </div>
 
-    <div class="col-lg-4">
-        <div class="card-fin text-center p-4">
-            <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" id="photoForm">
-                <div class="avatar-editor">
-                    <span class="avatar avatar-lg">
-                        @if (!string.IsNullOrEmpty(Model.ProfileImage))
-                        {
-                            <img src="@Model.ProfileImage" alt="Profile picture" class="avatar-img" />
-                        }
-                        else
-                        {
-                            @string.Join("", Model.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0])))
-                        }
-                    </span>
-                    <label class="avatar-cam" title="Change profile picture">
-                        <svg class="ico-sm" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3.5" /></svg>
-                        <input type="file" name="photo" accept="image/png,image/jpeg,image/gif,image/webp" class="d-none" onchange="document.getElementById('photoForm').submit()" />
-                    </label>
+            <footer class="set-foot">
+                <span class="set-foot-note"><svg class="ico-sm"><use href="#i-calendar"/></svg>Member since @Format.Date(Model.MemberSince)</span>
+                <button type="submit" form="profileForm" name="returnTab" value="profile" class="btn btn-fin">Save changes</button>
+            </footer>
+        </section>
+
+        @* ============================================================ Preferences *@
+        <section class="set-card" id="preferences" role="tabpanel" aria-labelledby="tab-preferences" tabindex="0">
+            <header class="set-head">
+                <h2>Preferences</h2>
+                <p>How amounts are shown across the app.</p>
+            </header>
+            <div class="set-body auth-form">
+                <div class="field set-narrow mb-0">
+                    <label asp-for="Currency" class="form-label"></label>
+                    <div class="field-control">
+                        <svg class="field-icon" aria-hidden="true"><use href="#i-dollar"/></svg>
+                        @* Sits in its own card, but posts with the profile form via the form attribute. *@
+                        <select asp-for="Currency" class="form-select" form="profileForm">
+                            @foreach (var (code, name) in Catalog.Currencies)
+                            {
+                                <option value="@code" selected="@(code == Model.Currency)">@name</option>
+                            }
+                        </select>
+                    </div>
+                    <span class="field-help">Changes the currency symbol on every page. Existing amounts are not converted.</span>
                 </div>
-            </form>
-
-            @if (!string.IsNullOrEmpty(Model.ProfileImage))
-            {
-                <form asp-action="RemovePhoto" method="post" class="mt-1">
-                    <button type="submit" class="btn btn-soft btn-sm">Remove picture</button>
-                </form>
-            }
-
-            <h3 class="fw-bold mt-2 mb-0">@Model.FullName</h3>
-            <div class="text-muted small mb-3">@Model.Email</div>
-            <div class="d-flex justify-content-center gap-2 flex-wrap">
-                <span class="chip"><svg class="ico-sm"><use href="#i-calendar" /></svg> Member since @Format.Date(Model.MemberSince)</span>
-                <span class="chip chip-info">@Format.Symbol(Model.Currency).Trim() account</span>
             </div>
-            <hr class="my-3" />
-            
-        </div>
+            <footer class="set-foot">
+                <span></span>
+                <button type="submit" form="profileForm" name="returnTab" value="preferences" class="btn btn-fin">Save preferences</button>
+            </footer>
+        </section>
+
+        @* ============================================================ Security *@
+        <section class="set-card" id="change-password" role="tabpanel" aria-labelledby="tab-change-password" tabindex="0">
+            <header class="set-head">
+                <h2>Change password</h2>
+                <p>Enter your current password, then choose a new one.</p>
+            </header>
+            <div class="set-body">
+                <form asp-action="ChangePassword" method="post" novalidate id="passwordForm" class="auth-form set-narrow">
+                    <div class="field">
+                        <label asp-for="@changePassword.CurrentPassword" class="form-label"></label>
+                        <div class="field-control">
+                            <svg class="field-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+                            <input asp-for="@changePassword.CurrentPassword" class="form-control" autocomplete="current-password" placeholder="Current password" />
+                        </div>
+                        <span asp-validation-for="@changePassword.CurrentPassword" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label asp-for="@changePassword.NewPassword" class="form-label"></label>
+                        <div class="field-control">
+                            <svg class="field-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+                            <input asp-for="@changePassword.NewPassword" class="form-control" autocomplete="new-password" placeholder="At least 6 characters" data-strength-meter="pw-strength-settings" />
+                        </div>
+                        <div class="pw-strength" id="pw-strength-settings" aria-live="polite">
+                            <div class="pw-bars"><span></span><span></span><span></span><span></span></div>
+                            <span class="pw-label">Use a mix of letters, numbers &amp; symbols.</span>
+                        </div>
+                        <span asp-validation-for="@changePassword.NewPassword" class="field-error"></span>
+                    </div>
+                    <div class="field mb-0">
+                        <label asp-for="@changePassword.ConfirmPassword" class="form-label"></label>
+                        <div class="field-control">
+                            <svg class="field-icon" aria-hidden="true"><use href="#i-lock-check"/></svg>
+                            <input asp-for="@changePassword.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Repeat new password" />
+                        </div>
+                        <span asp-validation-for="@changePassword.ConfirmPassword" class="field-error"></span>
+                    </div>
+                </form>
+            </div>
+            <footer class="set-foot">
+                <span class="set-foot-note"><svg class="ico-sm"><use href="#i-shield"/></svg>You'll stay signed in on this device.</span>
+                <button type="submit" form="passwordForm" class="btn btn-fin">Update password</button>
+            </footer>
+        </section>
     </div>
 </div>

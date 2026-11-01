@@ -16,40 +16,59 @@
             }
         </select>
     </form>
-    <a class="btn btn-soft" asp-action="ExportAnnual" asp-route-year="@Model.Year"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportAnnual" asp-route-year="@Model.Year"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportAnnualPdf" asp-route-year="@Model.Year"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
+    </div>
 </div>
 
 <div class="row g-3">
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
-            <div class="stat-label">Income @Model.Year</div>
-            <div class="stat-value text-pos">@Format.Money(Model.TotalIncome, cur)</div>
-            <div class="stat-foot">avg/month: @Format.Money(Model.AverageMonthlyIncome, cur)</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Income @Model.Year</div>
+                    <div class="stat-value text-pos">@Format.Money(Model.TotalIncome, cur)</div>
+                    <div class="stat-foot">avg/month: @Format.Money(Model.AverageMonthlyIncome, cur)</div>
+                </div>
+                <span class="stat-icon tint-green"><svg class="ico"><use href="#i-income"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
-            <div class="stat-label">Expenses @Model.Year</div>
-            <div class="stat-value text-neg">@Format.Money(Model.TotalExpenses, cur)</div>
-            <div class="stat-foot">avg/month: @Format.Money(Model.AverageMonthlyExpenses, cur)</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Expenses @Model.Year</div>
+                    <div class="stat-value text-neg">@Format.Money(Model.TotalExpenses, cur)</div>
+                    <div class="stat-foot">avg/month: @Format.Money(Model.AverageMonthlyExpenses, cur)</div>
+                </div>
+                <span class="stat-icon tint-red"><svg class="ico"><use href="#i-expense"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
-            <div class="stat-label">Net for the year</div>
-            <div class="stat-value @(Model.TotalNet >= 0 ? "text-pos" : "text-neg")">@Format.Money(Model.TotalNet, cur)</div>
-            <div class="stat-foot">income − expenses</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Net for the year</div>
+                    <div class="stat-value @(Model.TotalNet >= 0 ? "text-pos" : "text-neg")">@Format.Money(Model.TotalNet, cur)</div>
+                    <div class="stat-foot">income − expenses</div>
+                </div>
+                <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-wallet"/></svg></span>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="card-fin stat-card">
-            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
-            <div class="stat-label">Added to goals</div>
-            <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
-            <div class="stat-foot">during @Model.Year</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">Added to goals</div>
+                    <div class="stat-value">@Format.Money(Model.TotalSaved, cur)</div>
+                    <div class="stat-foot">during @Model.Year</div>
+                </div>
+                <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-piggy"/></svg></span>
+            </div>
         </div>
     </div>
 </div>
@@ -118,7 +137,7 @@
                         {
                             var ih = (double)(m.Income / Model.TrendMax) * 100;
                             var eh = (double)(m.Expenses / Model.TrendMax) * 100;
-                            <div class="bar-group" title="@Format.MonthName(m.Month): income @Format.Money(m.Income, cur), expenses @Format.Money(m.Expenses, cur)">
+                            <div class="bar-group" tabindex="0" data-tooltip="@ChartTip.Build(Format.MonthName(m.Month), ("Income", Format.Money(m.Income, cur), "#10b981"), ("Expenses", Format.Money(m.Expenses, cur), "#f43f5e"), ("Net", Format.Money(m.Net, cur), null))">
                                 <div class="bar-pair">
                                     <div class="bar income" style="height:@Format.Pct((decimal)ih)%"></div>
                                     <div class="bar expense" style="height:@Format.Pct((decimal)eh)%"></div>

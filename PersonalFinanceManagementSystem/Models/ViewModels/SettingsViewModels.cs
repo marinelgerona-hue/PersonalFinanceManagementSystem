@@ -13,9 +13,19 @@ public class SettingsViewModel
     [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
-    [Phone(ErrorMessage = "Please enter a valid phone number.")]
+    /// <summary>ISO code of the country picked for the phone number (e.g. "US").</summary>
+    public string PhoneCountry { get; set; } = "US";
+
+    /// <summary>The national part of the number, without the country dial code.
+    /// Checked against the picked country (PH keeps the strict PH mobile rules).</summary>
+    [PhoneNational]
+    [Display(Name = "Phone number")]
     public string? Phone { get; set; }
 
+    /// <summary>Dial code + national digits, in the format stored on the user.</summary>
+    public string FullPhone => Catalog.ComposePhone(PhoneCountry, Phone);
+
+    [Display(Name = "Default currency")]
     public string Currency { get; set; } = "USD";
 
     /// <summary>Profile picture data URI shown in the avatar circle (null = initials).</summary>

@@ -22,7 +22,10 @@
             }
         </select>
     </form>
-    <a class="btn btn-soft" asp-action="ExportMonthly" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export CSV</a>
+    <div class="export-actions d-flex gap-2">
+        <a class="btn btn-soft btn-export" asp-action="ExportMonthly" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export Excel</a>
+        <a class="btn btn-soft btn-export" asp-action="ExportMonthlyPdf" asp-route-year="@Model.Year" asp-route-month="@Model.Month"><svg class="ico-sm"><use href="#i-download"/></svg> Export PDF</a>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -95,7 +98,7 @@
                     var max = Model.TopCategories.Max(c => c.Amount);
                     @foreach (var c in Model.TopCategories)
                     {
-                        <div class="cat-row">
+                        <div class="cat-row" tabindex="0" data-tooltip="@ChartTip.Build(c.Category, ("Spent", Format.Money(c.Amount, cur), Format.CategoryColor(c.Category)), ("Share", Format.Pct(c.Percent) + "%", null))">
                             <div class="d-flex justify-content-between mb-1">
                                 <span class="legend-row m-0"><span class="dot" style="background:@Format.CategoryColor(c.Category)"></span><span class="fw-semibold">@c.Category</span></span>
                                 <span class="small text-muted">@Format.Money(c.Amount, cur) · @Format.Pct(c.Percent)%</span>

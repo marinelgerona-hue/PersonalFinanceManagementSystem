@@ -66,9 +66,15 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Login successful
-        TempData["Success"] = "Welcome back!";
+        // Login successful.
+        // Admins land in the Admin Console; regular users stay on their dashboard.
+        var signedIn = _auth.GetCurrentUser(HttpContext);
+        if (signedIn is not null && signedIn.Role == UserRoles.Admin)
+        {
+            return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
+        }
 
+        // The dashboard greets the user, so no toast is needed here.
         return RedirectToAction(
             "Index",
             "Dashboard");
@@ -124,8 +130,9 @@ public class AccountController : Controller
 
         // Registration successful.
         // The user is NOT automatically logged in.
+        TempData["ToastTitle"] = "Account created";
         TempData["Success"] =
-            "Account successfully created.";
+            "Sign in with your new email and password.";
 
         // Send the user to the Login page
         return RedirectToAction(
@@ -143,8 +150,9 @@ public class AccountController : Controller
     {
         _auth.Logout(HttpContext);
 
+        TempData["ToastTitle"] = "Signed out";
         TempData["Success"] =
-            "You have been logged out.";
+            "You've been signed out securely.";
 
         return RedirectToAction("Login");
     }

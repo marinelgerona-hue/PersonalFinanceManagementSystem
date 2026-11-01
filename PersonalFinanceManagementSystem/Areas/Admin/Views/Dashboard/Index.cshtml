@@ -1,0 +1,202 @@
+@model AdminStatsViewModel
+@{
+    var maxSignups = Math.Max(1, Model.SignupsPerMonth.Max(m => m.Count));
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-indigo"><svg class="ico"><use href="#i-users"/></svg></span>
+            <div>
+                <div class="stat-label">Registered users</div>
+                <div class="stat-value">@Model.TotalUsers</div>
+                <div class="stat-foot">@Model.NewUsersThisMonth new this month</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-green"><svg class="ico"><use href="#i-circle-check"/></svg></span>
+            <div>
+                <div class="stat-label">Active accounts</div>
+                <div class="stat-value">@Model.ActiveUsers</div>
+                <div class="stat-foot">can sign in right now</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-amber"><svg class="ico"><use href="#i-alert"/></svg></span>
+            <div>
+                <div class="stat-label">Deactivated</div>
+                <div class="stat-value">@Model.InactiveUsers</div>
+                <div class="stat-foot">blocked from signing in</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card-fin mini-stat">
+            <span class="stat-icon tint-sky"><svg class="ico"><use href="#i-shield"/></svg></span>
+            <div>
+                <div class="stat-label">Administrators</div>
+                <div class="stat-value">@Model.TotalAdmins</div>
+                <div class="stat-foot">can open this console</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">New registrations</h2>
+                    <div class="card-sub">Last 6 months, including the current one</div>
+                </div>
+                <span class="chip chip-muted">@Model.SignupsPerMonth.Sum(m => m.Count) total</span>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.SignupsPerMonth.All(m => m.Count == 0))
+                {
+                    <div class="empty-state">
+                        <svg class="ico ico-lg text-muted"><use href="#i-users"/></svg>
+                        <p>No registrations in the last 6 months yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="chart-bars" role="img" aria-label="New registrations per month">
+                        @foreach (var m in Model.SignupsPerMonth)
+                        {
+                            var pct = (int)Math.Round(100.0 * m.Count / maxSignups);
+                            <a class="chart-bar-col" href="@Url.Action("Index", "Reports")"
+                               data-tooltip="@ChartTip.Build(m.Label,
+                                   ("New registrations", $"{m.Count}", m.Count > 0 ? "#10b981" : "#94a3b8"))">
+                                <span class="chart-bar-val">@m.Count</span>
+                                <span class="chart-bar-track"><span class="chart-bar-fill @(m.Count > 0 ? "tint-green" : "")" style="height:@Math.Max(pct, m.Count > 0 ? 6 : 0)%"></span></span>
+                                <span class="chart-bar-label">@m.Label</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Stored records</h2>
+                    <div class="card-sub">Everything users have created</div>
+                </div>
+            </div>
+            <div class="card-body-fin d-flex flex-column gap-1">
+                <a class="module-row" asp-controller="Reports" asp-action="Index">
+                    <span class="module-dot bg-success-subtle text-success-emphasis">IN</span>
+                    <span class="module-name">Income records</span>
+                    <span class="module-count">@Format.Number(Model.TotalIncomeRecords)</span>
+                </a>
+                <a class="module-row" asp-controller="Reports" asp-action="Index">
+                    <span class="module-dot bg-danger-subtle text-danger-emphasis">EX</span>
+                    <span class="module-name">Expense records</span>
+                    <span class="module-count">@Format.Number(Model.TotalExpenseRecords)</span>
+                </a>
+                <a class="module-row" asp-controller="Reports" asp-action="Index">
+                    <span class="module-dot bg-warning-subtle text-warning-emphasis">BU</span>
+                    <span class="module-name">Budgets</span>
+                    <span class="module-count">@Format.Number(Model.TotalBudgets)</span>
+                </a>
+                <a class="module-row" asp-controller="Reports" asp-action="Index">
+                    <span class="module-dot bg-info-subtle text-info-emphasis">GO</span>
+                    <span class="module-name">Savings goals</span>
+                    <span class="module-count">@Format.Number(Model.TotalGoals)</span>
+                </a>
+                <a class="module-row" asp-controller="Reports" asp-action="Index">
+                    <span class="module-dot bg-secondary-subtle text-secondary-emphasis">RC</span>
+                    <span class="module-name">Recurring definitions</span>
+                    <span class="module-count">@Format.Number(Model.TotalRecurringDefinitions)</span>
+                </a>
+                <a class="module-row" asp-controller="Categories" asp-action="Index">
+                    <span class="module-dot bg-primary-subtle text-primary-emphasis">CA</span>
+                    <span class="module-name">Catalog categories</span>
+                    <span class="module-count">@Format.Number(Model.TotalCategories)</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Latest registrations</h2>
+                    <div class="card-sub">The newest accounts</div>
+                </div>
+                <a class="btn btn-soft btn-sm" asp-controller="Users" asp-action="Index">All users</a>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.RecentSignups.Count == 0)
+                {
+                    <div class="empty-state">
+                        <svg class="ico ico-lg text-muted"><use href="#i-user"/></svg>
+                        <p>No accounts registered yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <ul class="activity-list">
+                        @foreach (var u in Model.RecentSignups)
+                        {
+                            <li class="activity-item">
+                                <span class="activity-dot tint-sky"><svg class="ico-sm"><use href="#i-user"/></svg></span>
+                                <span class="activity-text">
+                                    <span class="activity-title">@u.FullName <span class="chip chip-muted chip-sm">@u.Email</span></span>
+                                    <span class="activity-detail">Registered @Format.Date(u.CreatedAt) · role @u.Role · @(u.IsActive ? "active" : "deactivated")</span>
+                                </span>
+                                <a class="btn-icon" asp-controller="Users" asp-action="Details" asp-route-id="@u.Id" title="Open account"><svg class="ico-sm"><use href="#i-arrow-right"/></svg></a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-fin h-100">
+            <div class="card-head">
+                <div>
+                    <h2 class="card-title">Recent activity</h2>
+                    <div class="card-sub">Newest audit-trail entries</div>
+                </div>
+                <a class="btn btn-soft btn-sm" asp-controller="ActivityLogs" asp-action="Index">All logs</a>
+            </div>
+            <div class="card-body-fin">
+                @if (Model.RecentActivity.Count == 0)
+                {
+                    <div class="empty-state">
+                        <svg class="ico ico-lg text-muted"><use href="#i-clock"/></svg>
+                        <p>Nothing logged yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <ul class="activity-list">
+                        @foreach (var l in Model.RecentActivity)
+                        {
+                            <li class="activity-item">
+                                <span class="activity-dot tint-amber"><svg class="ico-sm"><use href="#i-activity"/></svg></span>
+                                <span class="activity-text">
+                                    <span class="activity-title">@l.ActorName <span class="chip chip-muted chip-sm">@l.Action</span></span>
+                                    <span class="activity-detail">@l.Detail</span>
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

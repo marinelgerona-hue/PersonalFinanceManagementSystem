@@ -9,11 +9,25 @@ namespace PersonalFinanceManagementSystem.Controllers;
 public class IncomeController : AppControllerBase
 {
     private readonly IIncomeService _incomes;
+    private readonly ICategoryService _categories;
 
-    public IncomeController(IAuthService auth, IIncomeService incomes) : base(auth)
-        => _incomes = incomes;
+    public IncomeController(IAuthService auth, IIncomeService incomes, ICategoryService categories) : base(auth)
+    {
+        _incomes = incomes;
+        _categories = categories;
+    }
 
-    public IActionResult Index(IncomePeriod? period)
+    /// <summary>Sortable columns of the income table.</summary>
+    private static readonly Dictionary<string, Func<Income, object?>> IncomeSorts = new()
+    {
+        ["date"] = i => i.Date,
+        ["source"] = i => i.Source,
+        ["period"] = i => i.Period,
+        ["note"] = i => i.Note,
+        ["amount"] = i => i.Amount
+    };
+
+    public IActionResult Index(IncomePeriod? period, ListQuery query)
     {
         var now = DateTime.Now;
         var all = _incomes.GetAll(CurrentUser.Id);
@@ -23,9 +37,12 @@ public class IncomeController : AppControllerBase
             ? all
             : all.Where(i => i.Period == period).ToList();
 
+        query.Normalize(IncomeSorts.Keys, defaultSort: "date");
         var vm = new IncomeListViewModel
         {
-            Items = filtered,
+            Query = query,
+            Page = filtered.ToPaged(query, IncomeSorts,
+                (i, term) => ListQueryExtensions.AnyContains(term, i.Source, i.Note, i.Period.ToString())),
             Currency = CurrentUser.Currency,
 
             // All-time income: the total of all unique records, counted once.
@@ -61,6 +78,7 @@ public class IncomeController : AppControllerBase
     {
         ViewData["Title"] = "Add Income";
         ViewData["ActiveNav"] = "income";
+        ViewBag.Sources = _categories.GetActive(CategoryType.Income);
         return View("IncomeForm", new IncomeFormViewModel { Date = DateTime.Today });
     }
 
@@ -71,7 +89,8 @@ public class IncomeController : AppControllerBase
         ResolveSource(model);
         if (!ModelState.IsValid)
         {
-            RestoreSourceForDisplay(model);
+            RestoreSourceForDisplay(model, _categories.GetActive(CategoryType.Income));
+            ViewBag.Sources = _categories.GetActive(CategoryType.Income);
             ViewData["Title"] = "Add Income";
             ViewData["ActiveNav"] = "income";
             return View("IncomeForm", model);
@@ -115,11 +134,11 @@ public class IncomeController : AppControllerBase
     /// <summary>For validation-failure re-renders after a successful "Other"
     /// mapping: re-selects "Other" and keeps the typed value so the user
     /// still sees the custom source that was applied.</summary>
-    private static void RestoreSourceForDisplay(IncomeFormViewModel model)
+    private static void RestoreSourceForDisplay(IncomeFormViewModel model, IReadOnlyList<string> catalog)
     {
         if (model.CustomSource is { } custom &&
             custom.Length > 0 &&
-            !Catalog.IncomeSources.Contains(model.Source, StringComparer.OrdinalIgnoreCase) &&
+            !catalog.Contains(model.Source, StringComparer.OrdinalIgnoreCase) &&
             model.Source.Equals(custom, StringComparison.OrdinalIgnoreCase))
         {
             model.Source = "Other";
@@ -136,9 +155,11 @@ public class IncomeController : AppControllerBase
 
         ViewData["Title"] = "Edit Income";
         ViewData["ActiveNav"] = "income";
+        ViewBag.Sources = _categories.GetActive(CategoryType.Income);
+
         // A previously saved custom source is not in the catalog, so the
         // form selects "Other" and prefills the custom field with its value.
-        var isCustomSource = !Catalog.IncomeSources.Contains(income.Source);
+        var isCustomSource = !ViewBag.Sources.Contains(income.Source);
         return View("IncomeForm", new IncomeFormViewModel
         {
             Id = income.Id,
@@ -158,7 +179,8 @@ public class IncomeController : AppControllerBase
         ResolveSource(model);
         if (!ModelState.IsValid)
         {
-            RestoreSourceForDisplay(model);
+            RestoreSourceForDisplay(model, _categories.GetActive(CategoryType.Income));
+            ViewBag.Sources = _categories.GetActive(CategoryType.Income);
             ViewData["Title"] = "Edit Income";
             ViewData["ActiveNav"] = "income";
             return View("IncomeForm", model);
@@ -183,17 +205,20 @@ public class IncomeController : AppControllerBase
 
     // ------------------------------------------------------------ export
 
-    /// <summary>Downloads every income record as CSV.</summary>
+    /// <summary>Downloads every income record as an Excel workbook.</summary>
     [HttpGet]
     public IActionResult Export()
     {
         var items = _incomes.GetAll(CurrentUser.Id);
-        var csv = new Helpers.CsvFile("Date", "Source", "Period", "Amount", "Currency", "Note");
+        var csv = new Helpers.XlsxFile(Helpers.Format.Symbol(CurrentUser.Currency),
+            new[] { "Date", "Source", "Period", "Amount", "Currency", "Note" },
+            Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text,
+            Helpers.XlsxColumn.Currency, Helpers.XlsxColumn.Text, Helpers.XlsxColumn.Text);
         foreach (var item in items)
         {
             csv.AddRow(item.Date, item.Source, item.Period.ToString(), item.Amount, CurrentUser.Currency, item.Note);
         }
-        return csv.ToFileResult($"finapp-income-{DateTime.Today:yyyy-MM-dd}.csv");
+        return csv.ToFileResult($"finapp-income-{DateTime.Today:yyyy-MM-dd}.xlsx");
     }
 
     // ------------------------------------------------------------ delete

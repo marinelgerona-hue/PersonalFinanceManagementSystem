@@ -1,0 +1,104 @@
+@model RecurringTransactionDetailsViewModel
+@{
+    var cur = Model.Currency;
+    var item = Model.Item;
+    var overdue = item.IsActive && item.NextDueDate.Date < DateTime.Today;
+}
+
+<div class="card-fin mb-3">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">@item.Label</h2>
+            <div class="card-sub">
+                @item.Type · @item.Frequency · started @Format.Date(item.StartDate)
+                @(item.EndDate is null ? "" : $" · ends {Format.Date(item.EndDate.Value)}")
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-soft" asp-action="Index">Back to list</a>
+            <a class="btn btn-fin" asp-action="Edit" asp-route-id="@item.Id"><svg class="ico-sm"><use href="#i-edit"/></svg> Edit</a>
+        </div>
+    </div>
+
+    <div class="card-body-fin">
+        <section class="kpi-grid">
+            <article class="kpi">
+                <div class="kpi-head">
+                    <span class="kpi-icon @(item.Type == RecurringTransactionType.Income ? "tint-green" : "tint-red")"><svg class="ico"><use href="@(item.Type == RecurringTransactionType.Income ? "#i-income" : "#i-expense")"/></svg></span>
+                    <span class="kpi-label">Amount per occurrence</span>
+                </div>
+                <div class="kpi-value">@Format.Money(item.Amount, cur)</div>
+                <div class="kpi-foot">every @item.Frequency.ToString().ToLowerInvariant() occurrence</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-head">
+                    <span class="kpi-icon tint-sky"><svg class="ico"><use href="#i-clock"/></svg></span>
+                    <span class="kpi-label">Next due</span>
+                </div>
+                <div class="kpi-value">@Format.Date(item.NextDueDate)</div>
+                <div class="kpi-foot">
+                    @if (!item.IsActive)
+                    {
+                        @:paused
+                    }
+                    else if (overdue)
+                    {
+                        @:overdue — generates on next visit
+                    }
+                    else
+                    {
+                        @:scheduled
+                    }
+                </div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-head">
+                    <span class="kpi-icon tint-indigo"><svg class="ico"><use href="#i-report"/></svg></span>
+                    <span class="kpi-label">Generated so far</span>
+                </div>
+                <div class="kpi-value">@Model.History.Count</div>
+                <div class="kpi-foot">occurrence@(Model.History.Count == 1 ? "" : "s")</div>
+            </article>
+        </section>
+    </div>
+</div>
+
+<div class="card-fin">
+    <div class="card-head">
+        <div>
+            <h2 class="card-title">Generated history</h2>
+            <div class="card-sub">Income/expense records this item produced</div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        @if (Model.History.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="ico ico-lg text-muted"><use href="#i-repeat"/></svg>
+                <p>No occurrences generated yet.</p>
+            </div>
+        }
+        else
+        {
+            <table class="fin-table fin-table-fixed">
+                <thead>
+                    <tr>
+                        <th class="col-date">Date</th>
+                        <th>Title</th>
+                        <th class="text-end col-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var h in Model.History)
+                    {
+                        <tr>
+                            <td class="text-nowrap text-muted">@Format.Date(h.Date)</td>
+                            <td>@h.Title</td>
+                            <td class="text-end amount @(h.IsIncome ? "" : "neg")">@(h.IsIncome ? "+" : "-")@Format.Money(h.Amount, cur)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
