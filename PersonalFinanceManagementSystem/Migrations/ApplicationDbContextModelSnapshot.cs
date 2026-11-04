@@ -47,10 +47,20 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("TargetUserId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TargetUserId");
 
                     b.HasIndex("UserId");
 
@@ -336,6 +346,33 @@ namespace PersonalFinanceManagementSystem.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<int>("PasswordResetOtpAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PasswordResetOtpExpires")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PasswordResetOtpHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("PasswordResetOtpRequestedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("PasswordResetOtpVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("PasswordResetRole")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpires")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -364,6 +401,11 @@ namespace PersonalFinanceManagementSystem.Migrations
 
             modelBuilder.Entity("PersonalFinanceManagementSystem.Models.ActivityLog", b =>
                 {
+                    b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PersonalFinanceManagementSystem.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

@@ -48,7 +48,7 @@ public class SettingsController : AppControllerBase
         }
 
         RefreshCurrentUser();
-        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Profile updated",
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, CurrentUser.Role, "Profile updated",
             $"Updated profile details (name: {model.FullName}, email: {model.Email}).");
         TempData["ToastTitle"] = "Settings saved";
         TempData["Success"] = "Your profile and preferences are up to date.";
@@ -73,7 +73,7 @@ public class SettingsController : AppControllerBase
             return View("Index", BuildModel());
         }
 
-        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, "Password changed",
+        _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, CurrentUser.Role, "Password changed",
             "Changed account password from Settings.");
         TempData["ToastTitle"] = "Password updated";
         TempData["Success"] = "Use your new password the next time you sign in.";

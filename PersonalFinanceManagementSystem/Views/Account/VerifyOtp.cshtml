@@ -1,0 +1,39 @@
+@model VerifyOtpViewModel
+@{
+    var isAdministrator = Model.Role == UserRoles.Admin;
+    ViewData["Title"] = "Verify Code";
+}
+
+<div class="auth-shell">
+    <partial name="_AuthAside" />
+    <section class="auth-panel">
+        <div class="auth-brand auth-brand-mobile">
+            <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet" /></svg></span>
+            <span>Finance <span class="text-brand">Management</span></span>
+        </div>
+        <h1 class="auth-title">Verify your email</h1>
+        <p class="auth-sub">Check <strong>marinelquimson@gmail.com</strong> for your six-digit code. The code expires in 5 minutes.</p>
+        <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
+        <form asp-action="VerifyOtp" method="post" novalidate class="auth-form">
+            <input type="hidden" asp-for="UserId" />
+            <input type="hidden" asp-for="Email" />
+            <input type="hidden" asp-for="Role" />
+            <div class="field">
+                <label asp-for="Otp" class="form-label"></label>
+                <div class="field-control">
+                    <svg class="field-icon" aria-hidden="true"><use href="#i-lock" /></svg>
+                    <input asp-for="Otp" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code" />
+                </div>
+                <span asp-validation-for="Otp" class="field-error"></span>
+            </div>
+            <button type="submit" class="btn btn-fin auth-submit w-100">Verify code</button>
+        </form>
+        <form asp-action="ResendOtp" method="post" class="auth-form">
+            <input type="hidden" asp-for="UserId" />
+            <input type="hidden" asp-for="Email" />
+            <input type="hidden" asp-for="Role" />
+            <button type="submit" class="btn btn-link">Resend code</button>
+        </form>
+        <p class="auth-alt"><a asp-action="Login" asp-route-role="@Model.Role">Back to @(isAdministrator ? "Administrator Login" : "Sign in")</a></p>
+    </section>
+</div>

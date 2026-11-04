@@ -37,7 +37,9 @@
 
                     <div id="customLabelField" class="mt-2" style="@(Model.Label == "Other" ? "" : "display:none")">
                         <label for="CustomLabel" class="form-label">Custom label</label>
-                        <input asp-for="CustomLabel" type="text" class="form-control" maxlength="100" />
+                        <input asp-for="CustomLabel" type="text" class="form-control"
+                               placeholder="e.g. Pet care" maxlength="100"
+                               data-val="true" data-val-required="Please enter your category or source." />
                         <span asp-validation-for="CustomLabel" class="text-danger small"></span>
                     </div>
                 </div>
@@ -80,17 +82,6 @@
                     </select>
                     <span asp-validation-for="IncomePool" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6 col-xl-4" id="budgetField" style="@(Model.Type == RecurringTransactionType.Expense ? "" : "display:none")">
-                    <label asp-for="BudgetId" class="form-label">Budget <span class="text-muted fw-normal">(optional)</span></label>
-                    <select asp-for="BudgetId" class="form-select">
-                        <option value="">No budget</option>
-                        @foreach (var option in Model.Budgets)
-                        {
-                            <option value="@option.Id" data-category="@option.Category" selected="@(Model.BudgetId == option.Id)">@option.Category</option>
-                        }
-                    </select>
-                    <span asp-validation-for="BudgetId" class="text-danger small"></span>
-                </div>
                 <div class="col-md-6 col-xl-4 d-flex align-items-end">
                     <div class="form-check form-switch">
                         <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
@@ -112,8 +103,7 @@
 </div>
 
 @* Type toggles which catalog populates Label (expense categories vs income
-   sources), and shows/hides the budget + income-pool fields — they only
-   apply to recurring expenses. *@
+   sources), and shows/hides the income-pool field for recurring expenses. *@
 <script>
 (function () {
     var expenseCategories = @Html.Raw(Json.Serialize((IReadOnlyList<string>?)ViewBag.ExpenseOptions ?? Catalog.ExpenseCategories));
@@ -127,7 +117,6 @@
     var customField = document.getElementById('customLabelField');
     var customInput = document.getElementById('CustomLabel');
     var poolField = document.getElementById('poolField');
-    var budgetField = document.getElementById('budgetField');
     if (!typeSelect || !labelSelect) return;
 
     typeSelect.value = currentType;
@@ -147,7 +136,6 @@
         labelSelect.value = catalog.indexOf(currentLabel) >= 0 ? currentLabel : (currentLabel === 'Other' ? 'Other' : '');
 
         poolField.style.display = isExpense ? '' : 'none';
-        budgetField.style.display = isExpense ? '' : 'none';
     }
 
     function updateCustomLabelField() {

@@ -22,6 +22,9 @@ public interface IBudgetService
     /// period contains the expense date.
     /// </summary>
     List<BudgetStatus> GetStatusForMonth(int userId, int year, int month);
+    /// <summary>Expenses counted by one budget, using the same category,
+    /// date-range and explicit-assignment rules as its live spent total.</summary>
+    List<Expense> GetExpensesForBudget(int userId, Budget budget);
     /// <summary>
     /// The automatic deduction target for an expense: the most specific
     /// (daily > weekly > monthly > yearly) budget of the same category whose

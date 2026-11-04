@@ -9,6 +9,7 @@ public class RecurringTransactionService : IRecurringTransactionService
     /// so a pathological backlog (e.g. a Daily item started years ago) can't hang
     /// a page load. Any remainder self-heals over the next few requests.</summary>
     private const int MaxIterationsPerItem = 500;
+    private static readonly SemaphoreSlim ProcessingGate = new(1, 1);
 
     private readonly ApplicationDbContext _db;
 
@@ -60,6 +61,17 @@ public class RecurringTransactionService : IRecurringTransactionService
         return true;
     }
 
+    public bool ToggleActive(int userId, int id)
+    {
+        var existing = _db.RecurringTransactions
+            .FirstOrDefault(r => r.UserId == userId && r.Id == id);
+        if (existing is null) return false;
+
+        existing.IsActive = !existing.IsActive;
+        _db.SaveChanges();
+        return true;
+    }
+
     public bool Delete(int userId, int id)
     {
         var existing = _db.RecurringTransactions
@@ -72,6 +84,44 @@ public class RecurringTransactionService : IRecurringTransactionService
     }
 
     public int GenerateDueOccurrences(int userId)
+    {
+        ProcessingGate.Wait();
+        try
+        {
+            return GenerateDueOccurrencesCore(userId);
+        }
+        finally
+        {
+            ProcessingGate.Release();
+        }
+    }
+
+    public int GenerateDueOccurrencesForAllUsers()
+    {
+        ProcessingGate.Wait();
+        try
+        {
+            var userIds = _db.RecurringTransactions
+                .Where(r => r.IsActive && r.NextDueDate.Date <= DateTime.Today)
+                .Select(r => r.UserId)
+                .Distinct()
+                .ToList();
+
+            var generated = 0;
+            foreach (var userId in userIds)
+            {
+                generated += GenerateDueOccurrencesCore(userId);
+            }
+
+            return generated;
+        }
+        finally
+        {
+            ProcessingGate.Release();
+        }
+    }
+
+    private int GenerateDueOccurrencesCore(int userId)
     {
         var today = DateTime.Today;
         var due = _db.RecurringTransactions
@@ -110,7 +160,6 @@ public class RecurringTransactionService : IRecurringTransactionService
                         Date = r.NextDueDate.Date,
                         Note = r.Note,
                         IncomePool = r.IncomePool,
-                        BudgetId = r.BudgetId,
                         RecurringTransactionId = r.Id
                     });
                 }

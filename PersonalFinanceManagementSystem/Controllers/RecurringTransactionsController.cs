@@ -9,17 +9,14 @@ namespace PersonalFinanceManagementSystem.Controllers;
 public class RecurringTransactionsController : AppControllerBase
 {
     private readonly IRecurringTransactionService _recurring;
-    private readonly IBudgetService _budgets;
     private readonly ICategoryService _categories;
 
     public RecurringTransactionsController(
         IAuthService auth,
         IRecurringTransactionService recurring,
-        IBudgetService budgets,
         ICategoryService categories) : base(auth)
     {
         _recurring = recurring;
-        _budgets = budgets;
         _categories = categories;
     }
 
@@ -35,8 +32,8 @@ public class RecurringTransactionsController : AppControllerBase
 
     public IActionResult Index(ListQuery query)
     {
+        _recurring.GenerateDueOccurrences(CurrentUser.Id);
         var all = _recurring.GetAll(CurrentUser.Id);
-        var budgetNames = _budgets.GetAll(CurrentUser.Id).ToDictionary(b => b.Id, b => b.Category);
 
         query.Normalize(Sorts.Keys, defaultSort: "nextduedate", defaultDir: "asc");
 
@@ -50,7 +47,6 @@ public class RecurringTransactionsController : AppControllerBase
             DueSoonCount = all.Count(r => r.IsActive && r.NextDueDate.Date >= DateTime.Today && r.NextDueDate.Date <= DateTime.Today.AddDays(7)),
             OverdueCount = all.Count(r => r.IsActive && r.NextDueDate.Date < DateTime.Today),
             MonthlyTotal = all.Where(r => r.IsActive && r.Frequency == RecurrenceFrequency.Monthly).Sum(r => r.Amount),
-            BudgetNames = budgetNames
         };
         ViewData["Title"] = "Recurring";
         ViewData["ActiveNav"] = "recurring";
@@ -72,7 +68,6 @@ public class RecurringTransactionsController : AppControllerBase
     public IActionResult Create(RecurringTransactionFormViewModel model)
     {
         ResolveLabel(model);
-        var budget = ResolveBudget(model);
 
         if (model.EndDate is not null && model.EndDate.Value.Date < model.StartDate.Date)
         {
@@ -102,7 +97,7 @@ public class RecurringTransactionsController : AppControllerBase
             IsActive = model.IsActive,
             Note = model.Note ?? string.Empty,
             IncomePool = model.Type == RecurringTransactionType.Expense ? model.IncomePool : null,
-            BudgetId = model.Type == RecurringTransactionType.Expense ? budget?.Id : null
+            BudgetId = null
         });
 
         TempData["Success"] = $"{model.Label} will repeat {model.Frequency.ToString().ToLowerInvariant()}, starting {Helpers.Format.Date(model.StartDate)}.";
@@ -123,7 +118,6 @@ public class RecurringTransactionsController : AppControllerBase
             ? _categories.GetActive(CategoryType.Expense)
             : _categories.GetActive(CategoryType.Income);
         var isCustomLabel = !catalog.Contains(item.Label, StringComparer.OrdinalIgnoreCase);
-
         return View("RecurringTransactionForm", BuildForm(new RecurringTransactionFormViewModel
         {
             Id = item.Id,
@@ -136,7 +130,6 @@ public class RecurringTransactionsController : AppControllerBase
             EndDate = item.EndDate,
             IsActive = item.IsActive,
             Note = item.Note,
-            BudgetId = item.BudgetId,
             IncomePool = item.IncomePool ?? IncomePeriod.Monthly
         }));
     }
@@ -146,7 +139,6 @@ public class RecurringTransactionsController : AppControllerBase
     public IActionResult Edit(int id, RecurringTransactionFormViewModel model)
     {
         ResolveLabel(model);
-        var budget = ResolveBudget(model);
 
         if (model.EndDate is not null && model.EndDate.Value.Date < model.StartDate.Date)
         {
@@ -182,7 +174,7 @@ public class RecurringTransactionsController : AppControllerBase
             IsActive = model.IsActive,
             Note = model.Note ?? string.Empty,
             IncomePool = model.Type == RecurringTransactionType.Expense ? model.IncomePool : null,
-            BudgetId = model.Type == RecurringTransactionType.Expense ? budget?.Id : null
+            BudgetId = null
         });
 
         TempData[updated ? "Success" : "Error"] = updated
@@ -192,6 +184,17 @@ public class RecurringTransactionsController : AppControllerBase
     }
 
     // ------------------------------------------------------------ skip / delete
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult ToggleActive(int id, string? returnUrl)
+    {
+        var toggled = _recurring.ToggleActive(CurrentUser.Id, id);
+        TempData[toggled ? "Success" : "Error"] = toggled
+            ? "Recurring transaction status updated."
+            : "Recurring transaction was not found.";
+        return RedirectToReturnUrl(returnUrl);
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -220,6 +223,7 @@ public class RecurringTransactionsController : AppControllerBase
     [HttpGet]
     public IActionResult Details(int id)
     {
+        _recurring.GenerateDueOccurrences(CurrentUser.Id);
         var item = _recurring.Get(CurrentUser.Id, id);
         if (item is null) return NotFound();
 
@@ -269,10 +273,6 @@ public class RecurringTransactionsController : AppControllerBase
         ViewBag.LabelOptions = model.Type == RecurringTransactionType.Expense ? expense : income;
         ViewBag.ExpenseOptions = expense;
         ViewBag.IncomeOptions = income;
-
-        model.Budgets = model.Type == RecurringTransactionType.Expense
-            ? _budgets.GetOptionsForExpense(CurrentUser.Id, model.Label, model.StartDate)
-            : new List<BudgetOption>();
         return model;
     }
 
@@ -305,27 +305,4 @@ public class RecurringTransactionsController : AppControllerBase
         }
     }
 
-    /// <summary>Validates the budget picked for a recurring expense (must exist
-    /// on this account and match the category). Unlike a one-off expense, period
-    /// coverage isn't checked here — a recurring bill naturally outlives any
-    /// single budget period.</summary>
-    private Budget? ResolveBudget(RecurringTransactionFormViewModel model)
-    {
-        if (model.Type != RecurringTransactionType.Expense || model.BudgetId is null) return null;
-
-        var budget = _budgets.Get(CurrentUser.Id, model.BudgetId.Value);
-        if (budget is null)
-        {
-            ModelState.AddModelError(nameof(model.BudgetId), "The selected budget no longer exists. Please pick another one.");
-            return null;
-        }
-
-        if (!budget.Category.Equals(model.Label, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(nameof(model.BudgetId), $"The selected budget is for {budget.Category}, not {model.Label}.");
-            return null;
-        }
-
-        return budget;
-    }
 }

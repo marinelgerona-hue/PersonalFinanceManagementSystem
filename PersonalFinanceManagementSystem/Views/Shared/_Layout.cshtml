@@ -116,6 +116,23 @@
                         <span class="budget-meter-foot">@Format.Money0(navState.MonthSpent, navState.Currency) of @Format.Money0(navState.MonthBudgeted, navState.Currency) spent</span>
                     </a>
                 }
+                else
+                {
+                    <a class="budget-meter" asp-controller="Budgets" asp-action="Index">
+                        <span class="budget-meter-head">
+                            <span>Budget summary</span>
+                        </span>
+                        <span class="budget-meter-foot">No active budget yet</span>
+                    </a>
+                }
+                @if (currentUser.Role == UserRoles.Admin)
+                {
+                    <a class="nav-link-fin nav-link-secondary" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"
+                       title="Open the Administrator View" data-tip="Administrator View">
+                        <svg class="ico"><use href="#i-shield"/></svg>
+                        <span class="nav-text">Administrator View</span>
+                    </a>
+                }
             </div>
         </aside>
 

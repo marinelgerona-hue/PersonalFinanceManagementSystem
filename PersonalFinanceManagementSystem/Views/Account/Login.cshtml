@@ -1,19 +1,29 @@
 @model LoginViewModel
 
 @{
-    ViewData["Title"] = "Sign in";
+    var isAdministrator = Model.Role == UserRoles.Admin;
+    ViewData["Title"] = isAdministrator ? "Administrator Login" : "Sign in";
 }
 
 <div class="auth-shell">
     <partial name="_AuthAside" />
 
-    <section class="auth-panel">
+    <section class="auth-panel auth-login-panel">
         <div class="auth-brand auth-brand-mobile">
             <span class="brand-logo"><svg class="ico logo-ico"><use href="#i-wallet"/></svg></span>
             <span>Finance <span class="text-brand">Management</span></span>
         </div>
 
-        <h1 class="auth-title">Sign in to your account</h1>
+        @* Returns to the public landing page (never to a protected page). *@
+        <div class="mb-3">
+            <a class="btn btn-soft btn-sm" asp-controller="Home" asp-action="Index"
+               aria-label="Back to the welcome page">
+                <svg class="ico-sm" aria-hidden="true"><use href="#i-chevron-left"/></svg>
+                Back
+            </a>
+        </div>
+
+        <h1 class="auth-title">@(isAdministrator ? "Administrator Login" : "Sign In")</h1>
         <p class="auth-sub">Enter your email and password to continue.</p>
 
         <!-- Validation errors -->
@@ -26,6 +36,8 @@
               method="post"
               novalidate
               class="auth-form">
+
+            <input type="hidden" asp-for="Role" />
 
             <div class="field">
                 <label asp-for="Email" class="form-label"></label>
@@ -63,6 +75,7 @@
                         Keep me signed in for 30 days
                     </label>
                 </div>
+                <a class="login-forgot" asp-action="ForgotPassword" asp-route-role="@Model.Role">Forgot Password?</a>
             </div>
 
             <button type="submit"
@@ -72,9 +85,12 @@
 
         </form>
 
-        <p class="auth-alt">
-            New to Finance Management?
-            <a asp-action="Register">Create an account</a>
-        </p>
+        @if (!isAdministrator)
+        {
+            <p class="auth-alt">
+                New to Finance Management?
+                <a asp-action="Register">Create an account</a>
+            </p>
+        }
     </section>
 </div>

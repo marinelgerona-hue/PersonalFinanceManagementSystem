@@ -60,7 +60,7 @@ public class RecurringTransaction
     /// every generated Expense row.</summary>
     public IncomePeriod? IncomePool { get; set; }
 
-    /// <summary>Mirrors Expense.BudgetId — Type == Expense only; copied onto
-    /// every generated Expense row.</summary>
+    /// <summary>Legacy budget linkage retained for database compatibility. New
+    /// recurring transactions and generated expenses do not use this field.</summary>
     public int? BudgetId { get; set; }
 }

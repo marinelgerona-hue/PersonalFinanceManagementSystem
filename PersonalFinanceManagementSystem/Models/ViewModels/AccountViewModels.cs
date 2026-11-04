@@ -1,9 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+using PersonalFinanceManagementSystem.Models;
 
 namespace PersonalFinanceManagementSystem.Models.ViewModels;
 
 public class LoginViewModel
 {
+    /// <summary>Requested sign-in area: User or Admin.</summary>
+    public string Role { get; set; } = UserRoles.User;
+
     [Required, EmailAddress(ErrorMessage = "Please enter a valid email address.")]
     public string Email { get; set; } = string.Empty;
 
@@ -14,6 +18,53 @@ public class LoginViewModel
     /// <summary>Keep the user signed in across browser restarts (30-day
     /// secure auth cookie). Unchecked = the usual session-only login.</summary>
     public bool RememberMe { get; set; }
+}
+
+public class ForgotPasswordViewModel
+{
+    [Required, EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    [Display(Name = "Registered email")]
+    public string Email { get; set; } = string.Empty;
+
+    public string Role { get; set; } = UserRoles.User;
+}
+
+public class ResetPasswordViewModel
+{
+    [Required]
+    public string Token { get; set; } = string.Empty;
+
+    [Required]
+    public string Role { get; set; } = UserRoles.User;
+
+    [Required(ErrorMessage = "New password is required.")]
+    [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "New password")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Please confirm your new password.")]
+    [Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Confirm new password")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
+public class VerifyOtpViewModel
+{
+    [Range(1, int.MaxValue)]
+    public int UserId { get; set; }
+
+    [Required]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Role { get; set; } = UserRoles.User;
+
+    [Required(ErrorMessage = "Enter the six-digit code from your email.")]
+    [RegularExpression("^\\d{6}$", ErrorMessage = "The verification code must be six digits.")]
+    [Display(Name = "Verification code")]
+    public string Otp { get; set; } = string.Empty;
 }
 
 public class RegisterViewModel

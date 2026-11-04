@@ -32,7 +32,7 @@ public interface IAdminService
     AdminReportViewModel GetReport();
 
     // Activity logs
-    AdminActivityListViewModel ListActivity(ListQuery query, int userId, string action);
+    AdminActivityListViewModel ListActivity(ListQuery query, int userId, string? action);
     (bool Success, string Error) ClearActivity(User admin, HttpContext context);
 
     // Admin settings
@@ -217,8 +217,8 @@ public class AdminService : IAdminService
             Budgets = counts.Item3,
             Goals = counts.Item4,
             RecurringDefinitions = _db.RecurringTransactions.Count(r => r.UserId == userId),
-            ActivityEntries = _db.ActivityLogs.Count(l => l.UserId == userId),
-            RecentActivity = _db.ActivityLogs.Where(l => l.UserId == userId)
+            ActivityEntries = _db.ActivityLogs.Count(l => l.UserId == userId || l.TargetUserId == userId),
+            RecentActivity = _db.ActivityLogs.Where(l => l.UserId == userId || l.TargetUserId == userId)
                 .OrderByDescending(l => l.Id).Take(10).ToList(),
             CurrentAdminId = admin.Id
         };
@@ -258,7 +258,7 @@ public class AdminService : IAdminService
         if (model.IsCreate && string.IsNullOrWhiteSpace(model.Password))
             return (false, "Password is required.");
 
-        User user;
+        User? user;
         if (create)
         {
             var salt = SecurityHelper.NewSalt();
@@ -304,11 +304,12 @@ public class AdminService : IAdminService
 
         _db.SaveChanges();
 
-        _activity.Log(context, user.Id, user.FullName,
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role,
             create ? "UserCreated" : "UserUpdated",
             create
-                ? $"Account created by {admin.FullName} ({user.Email}, role {user.Role})."
-                : $"Account details updated by {admin.FullName} ({user.Email}, role {user.Role}).");
+                ? $"Created account {user.FullName} ({user.Email}, role {user.Role})."
+                : $"Updated account {user.FullName} ({user.Email}, role {user.Role}).",
+            targetUserId: user.Id);
 
         return (true, string.Empty);
     }
@@ -337,9 +338,10 @@ public class AdminService : IAdminService
             _db.SaveChanges();
         }
 
-        _activity.Log(context, user.Id, user.FullName,
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role,
             active ? "AccountActivated" : "AccountDeactivated",
-            $"Account {(active ? "activated" : "deactivated")} by {admin.FullName} ({user.Email}).");
+            $"{user.FullName} ({user.Email}) was {(active ? "activated" : "deactivated")}.",
+            targetUserId: user.Id);
 
         return (true, string.Empty);
     }
@@ -371,8 +373,8 @@ public class AdminService : IAdminService
         _db.Users.Remove(user);
         _db.SaveChanges();
 
-        _activity.Log(context, null, name, "AccountDeleted",
-            $"Account deleted by {admin.FullName} ({email}) — all of the account's financial records were removed with it.");
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role, "AccountDeleted",
+            $"Deleted account {name} ({email}) — all of the account's financial records were removed with it.");
 
         return (true, string.Empty);
     }
@@ -452,7 +454,7 @@ public class AdminService : IAdminService
         if (_db.Categories.Any(c => c.Type == model.Type && c.Name == name && c.Id != model.Id))
             return (false, $"A {model.Type.ToString().ToLowerInvariant()} category named “{name}” already exists.");
 
-        Category category;
+        Category? category;
         if (create)
         {
             category = new Category { Type = model.Type, Name = name, IsActive = model.IsActive };
@@ -478,7 +480,7 @@ public class AdminService : IAdminService
 
         _db.SaveChanges();
 
-        _activity.Log(context, admin.Id, admin.FullName,
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role,
             create ? "CategoryCreated" : "CategoryUpdated",
             $"{(create ? "Created" : "Updated")} {model.Type.ToString().ToLowerInvariant()} category “{name}”{(model.IsActive ? "" : " (inactive)")}.");
 
@@ -497,9 +499,9 @@ public class AdminService : IAdminService
         category.IsActive = active;
         _db.SaveChanges();
 
-        _activity.Log(context, admin.Id, admin.FullName,
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role,
             active ? "CategoryActivated" : "CategoryDeactivated",
-            $"{category.Type} category “{category.Name}” {(active ? "re-activated" : "deactivated")} by {admin.FullName}.");
+            $"{category.Type} category “{category.Name}” {(active ? "re-activated" : "deactivated")}.");
 
         return (true, string.Empty);
     }
@@ -520,7 +522,7 @@ public class AdminService : IAdminService
         _db.Categories.Remove(category);
         _db.SaveChanges();
 
-        _activity.Log(context, admin.Id, admin.FullName, "CategoryDeleted",
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role, "CategoryDeleted",
             $"Deleted {category.Type.ToString().ToLowerInvariant()} category “{category.Name}”.");
 
         return (true, string.Empty);
@@ -588,7 +590,7 @@ public class AdminService : IAdminService
 
     // ============================================================ activity logs
 
-    public AdminActivityListViewModel ListActivity(ListQuery query, int userId, string action)
+    public AdminActivityListViewModel ListActivity(ListQuery query, int userId, string? action)
     {
         query.Normalize(new[] { "time", "actor", "action" },
             defaultSort: "time", defaultDir: "desc");
@@ -596,14 +598,15 @@ public class AdminService : IAdminService
         var entries = _db.ActivityLogs.AsNoTracking();
 
         if (userId > 0)
-            entries = entries.Where(l => l.UserId == userId);
+            entries = entries.Where(l => l.UserId == userId || l.TargetUserId == userId);
         if (!string.IsNullOrEmpty(action) && action != "all")
             entries = entries.Where(l => l.Action == action);
         if (query.Search.Length > 0)
         {
             var term = query.Search;
             entries = entries.Where(l =>
-                l.ActorName.Contains(term) || l.Detail.Contains(term) ||
+                l.ActorName.Contains(term) || l.Role.Contains(term) ||
+                l.Action.Contains(term) || l.Detail.Contains(term) ||
                 (l.IpAddress ?? string.Empty).Contains(term));
         }
 
@@ -620,7 +623,7 @@ public class AdminService : IAdminService
             Query = query,
             Page = paged,
             UserId = userId,
-            Action = action,
+            Action = string.IsNullOrEmpty(action) ? "all" : action,
             Actions = _db.ActivityLogs.Select(l => l.Action).Distinct().OrderBy(a => a).ToList(),
             Users = _db.Users.AsNoTracking()
                 .OrderBy(u => u.FullName)
@@ -632,7 +635,7 @@ public class AdminService : IAdminService
     public (bool, string) ClearActivity(User admin, HttpContext context)
     {
         var removed = _db.ActivityLogs.ExecuteDelete();
-        _activity.Log(context, admin.Id, admin.FullName, "ActivityCleared",
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role, "ActivityCleared",
             $"Cleared {removed} activity log entries.");
 
         return (true, string.Empty);
@@ -652,7 +655,7 @@ public class AdminService : IAdminService
         admin.Phone = form.Phone?.Trim() ?? string.Empty;
         _db.SaveChanges();
 
-        _activity.Log(context, admin.Id, admin.FullName, "AdminProfileUpdated",
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role, "AdminProfileUpdated",
             "Administrator account details updated.");
 
         return string.Empty;
@@ -667,7 +670,7 @@ public class AdminService : IAdminService
         admin.PasswordHash = SecurityHelper.Hash(form.NewPassword, admin.PasswordSalt);
         _db.SaveChanges();
 
-        _activity.Log(context, admin.Id, admin.FullName, "AdminPasswordChanged",
+        _activity.Log(context, admin.Id, admin.FullName, admin.Role, "AdminPasswordChanged",
             "Administrator password changed.");
 
         return true;

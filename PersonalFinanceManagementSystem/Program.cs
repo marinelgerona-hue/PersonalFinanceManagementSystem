@@ -14,6 +14,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
 // Session keeps the signed-in user id.
 builder.Services.AddSession(options =>
@@ -26,6 +27,7 @@ builder.Services.AddSingleton<InMemoryDataStore>();
 
 // Database-backed services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IIncomeService, IncomeService>();
 
 
@@ -38,6 +40,7 @@ builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
+builder.Services.AddHostedService<RecurringTransactionBackgroundService>();
 
 // Admin console
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();

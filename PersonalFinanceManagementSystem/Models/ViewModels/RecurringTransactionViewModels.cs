@@ -37,14 +37,10 @@ public class RecurringTransactionFormViewModel
     [StringLength(300)]
     public string? Note { get; set; }
 
-    /// <summary>Budget this generates expenses against. Type == Expense only.</summary>
-    public int? BudgetId { get; set; }
-
     /// <summary>Income pool this generates expenses from. Type == Expense only.</summary>
     [Display(Name = "Income period to deduct from")]
     public IncomePeriod IncomePool { get; set; } = IncomePeriod.Monthly;
 
-    public List<BudgetOption> Budgets { get; set; } = new();
 }
 
 public class RecurringTransactionListViewModel
@@ -58,7 +54,6 @@ public class RecurringTransactionListViewModel
     public int OverdueCount { get; set; }
     public decimal MonthlyTotal { get; set; }
 
-    public Dictionary<int, string> BudgetNames { get; set; } = new();
 }
 
 public class RecurringTransactionDetailsViewModel

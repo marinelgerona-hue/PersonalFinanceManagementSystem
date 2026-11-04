@@ -669,13 +669,15 @@ a { text-decoration: none; }
 .pw-strength[data-level="4"] .pw-bars span:nth-child(-n+4) { background: #059669; }
 
 /* Checkbox + submit */
-.auth-form .field-inline { margin: 4px 0 22px; }
+.auth-form .field-inline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 4px 0 22px; }
 .auth-form .form-check { display: flex; align-items: center; gap: 9px; min-height: 0; padding-left: 0; margin: 0; }
 .auth-form .form-check-input { float: none; flex: none; width: 16px; height: 16px; margin: 0; border-radius: 4px; border-color: #c3ccd8; cursor: pointer; }
 .auth-form .form-check-label { cursor: pointer; }
 .auth-form .form-check-input:checked { background-color: var(--brand-2); border-color: var(--brand-2); }
 .auth-form .form-check-input:focus { box-shadow: 0 0 0 4px rgba(16, 185, 129, .14); border-color: var(--brand); }
 .auth-form .form-check-label { font-size: .85rem; color: var(--ink-2); }
+.auth-form .login-forgot { flex: 0 0 auto; color: var(--brand-2); font-size: .85rem; font-weight: 600; text-decoration: none; }
+.auth-form .login-forgot:hover { color: var(--brand); }
 .auth-submit {
     height: 46px; margin-top: 8px; border-radius: 10px; font-size: .95rem; font-weight: 600; letter-spacing: .005em;
     background: #059669; box-shadow: 0 1px 2px rgba(5, 150, 105, .3), inset 0 1px 0 rgba(255, 255, 255, .12);
@@ -751,6 +753,10 @@ a { text-decoration: none; }
 .auth-panel { display: flex; flex-direction: column; justify-content: center; padding: 56px clamp(32px, 5vw, 88px); }
 .auth-panel > * { width: 100%; max-width: 520px; margin-left: auto; margin-right: auto; }
 .auth-panel .auth-title { font-size: 1.6rem; }
+.auth-login-panel { align-items: center; }
+.auth-login-panel > * { max-width: 440px; }
+.auth-login-panel .auth-title,
+.auth-login-panel .auth-sub { text-align: center; }
 .auth-brand-mobile { display: none; }
 
 .auth-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
@@ -1714,4 +1720,19 @@ a.module-row:hover { background: #f8fafc; }
     .chart-bars::-webkit-scrollbar { display: none; }
     .chart-bar-col { min-width: 48px; }
 }
+
+/* Landing-page sign-in role selection. */
+.role-selection-modal .modal-content { border: 0; border-radius: 18px; box-shadow: 0 24px 70px rgba(2, 6, 23, .22); }
+.role-selection-modal .modal-header { align-items: flex-start; border-bottom-color: #edf1f5; padding: 22px 24px 18px; }
+.role-selection-modal .modal-title { color: var(--ink); font-size: 1.15rem; font-weight: 700; }
+.role-selection-subtitle { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+.role-selection-modal .modal-body { padding: 20px 24px 8px; }
+.role-selection-options { display: grid; gap: 12px; }
+.role-selection-option { display: flex; align-items: center; gap: 13px; border: 1px solid #dbe3ec; border-radius: 13px; cursor: pointer; padding: 14px 15px; }
+.role-selection-option:has(input:checked) { border-color: var(--brand); background: rgba(16, 185, 129, .06); }
+.role-selection-option .form-check-input { width: 20px; height: 20px; flex: 0 0 20px; margin: 0; accent-color: var(--brand-2); }
+.role-selection-copy { display: flex; flex-direction: column; gap: 2px; }
+.role-selection-copy strong { color: var(--ink); font-size: .9rem; font-weight: 600; }
+.role-selection-copy span { color: var(--muted); font-size: .78rem; }
+.role-selection-modal .modal-footer { border-top-color: #edf1f5; gap: 8px; padding: 14px 24px 20px; }
 

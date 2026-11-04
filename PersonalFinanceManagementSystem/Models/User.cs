@@ -37,4 +37,28 @@ public class User
 
     /// <summary>When the remembered login expires; the cookie stops working after this.</summary>
     public DateTime? RememberTokenExpires { get; set; }
+
+    /// <summary>SHA-256 hash of the current password-reset token. Null means no reset is pending.</summary>
+    public string? PasswordResetTokenHash { get; set; }
+
+    /// <summary>Expiration time for the password-reset token.</summary>
+    public DateTime? PasswordResetTokenExpires { get; set; }
+
+    /// <summary>Role selected when the reset request was made.</summary>
+    public string? PasswordResetRole { get; set; }
+
+    /// <summary>SHA-256 hash of the current six-digit password-reset OTP.</summary>
+    public string? PasswordResetOtpHash { get; set; }
+
+    /// <summary>When the current OTP expires.</summary>
+    public DateTime? PasswordResetOtpExpires { get; set; }
+
+    /// <summary>Number of incorrect OTP submissions for the current challenge.</summary>
+    public int PasswordResetOtpAttempts { get; set; }
+
+    /// <summary>When the current OTP was requested, used for request throttling.</summary>
+    public DateTime? PasswordResetOtpRequestedAt { get; set; }
+
+    /// <summary>Whether the OTP has been verified for this reset challenge.</summary>
+    public bool PasswordResetOtpVerified { get; set; }
 }
