@@ -52,6 +52,12 @@ public abstract class AdminControllerBase : Controller
 
         CurrentUser = user;
         ViewBag.User = user;
+
+        // Admin pages must never be restored from the browser cache after logout.
+        Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers.Expires = "0";
+
         base.OnActionExecuting(context);
     }
 }

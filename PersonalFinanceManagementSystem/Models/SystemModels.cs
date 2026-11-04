@@ -35,13 +35,23 @@ public class ActivityLog
 {
     public int Id { get; set; }
 
-    /// <summary>The user whose action this was, when the action can be attributed
-    /// to a specific account (null for events like a rejected sign-in attempt).</summary>
+    /// <summary>The account that performed the action, when the action can be
+    /// attributed to a specific account (null for events like a rejected
+    /// sign-in attempt or a deleted account).</summary>
     public int? UserId { get; set; }
 
     /// <summary>Who performed it, denormalized from the user row so the log stays
     /// readable even if the account is later deleted.</summary>
     public string ActorName { get; set; } = string.Empty;
+
+    /// <summary>Role of the acting account at the time ("Admin" or "User"),
+    /// denormalized for the same reason as <see cref="ActorName"/>.</summary>
+    public string Role { get; set; } = string.Empty;
+
+    /// <summary>For an administrator's user-management action, the account the
+    /// action was performed on. Lets a user's own activity view include the
+    /// admin changes made to it while the entry still credits the admin.</summary>
+    public int? TargetUserId { get; set; }
 
     /// <summary>Short machine-friendly event name, e.g. "Login", "UserDeactivated".</summary>
     public string Action { get; set; } = string.Empty;

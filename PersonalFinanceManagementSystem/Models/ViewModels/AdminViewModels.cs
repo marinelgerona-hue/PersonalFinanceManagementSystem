@@ -184,7 +184,8 @@ public class AdminActivityListViewModel
     public required ListQuery Query { get; init; }
     public required PagedList<ActivityLog> Page { get; init; }
 
-    /// <summary>When set, only entries for this user are shown (0 = everyone).</summary>
+    /// <summary>When set, only entries performed by this user or made about
+    /// their account by an administrator are shown (0 = everyone).</summary>
     public int UserId { get; set; }
 
     /// <summary>When set, only entries with this action name are shown ("all" = everything).</summary>

@@ -49,6 +49,32 @@ public class BudgetOption
     public bool IsMatch { get; set; }
 }
 
+public class BudgetExpenseFormViewModel
+{
+    [Required]
+    public int BudgetId { get; set; }
+
+    [Required(ErrorMessage = "Please enter an amount.")]
+    [Range(0.01, 99_999_999, ErrorMessage = "Amount must be greater than 0.")]
+    public decimal Amount { get; set; }
+
+    [Required(ErrorMessage = "Please choose a date.")]
+    [DataType(DataType.Date)]
+    public DateTime Date { get; set; } = DateTime.Today;
+
+    [Display(Name = "Income period to deduct from")]
+    public IncomePeriod IncomePool { get; set; } = IncomePeriod.Monthly;
+
+    [StringLength(300)]
+    public string? Note { get; set; }
+}
+
+public class BudgetExpenseHistoryItem
+{
+    public Budget Budget { get; set; } = new();
+    public Expense Expense { get; set; } = new();
+}
+
 public class BudgetListViewModel
 {
     public int Year { get; set; }
@@ -56,6 +82,9 @@ public class BudgetListViewModel
     public string Currency { get; set; } = "USD";
     /// <summary>All budgets for the month (used by the summary cards).</summary>
     public List<BudgetStatus> Items { get; set; } = new();
+
+    public BudgetExpenseFormViewModel DailyExpense { get; set; } = new();
+    public List<BudgetExpenseHistoryItem> DailyHistory { get; set; } = new();
 
     /// <summary>The current page of the (searched, sorted) budget table.</summary>
     public PagedList<BudgetStatus> Page { get; set; } = new();

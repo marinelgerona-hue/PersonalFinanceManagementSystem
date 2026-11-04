@@ -1,8 +1,6 @@
 @model AdminActivityListViewModel
 @{
     var q = Model.Query;
-    string FilterUrl() =>
-        $"/Admin/ActivityLogs?user={Model.UserId}&action={Uri.EscapeDataString(Model.Action)}&sort={q.Sort}&dir={q.Dir}&size={q.Size}";
 }
 
 <div class="card-fin">
@@ -80,10 +78,14 @@
                             <tr>
                                 <td title="@l.CreatedAt.ToString("MMMM d, yyyy, h:mm:ss tt")">
                                     <span>@l.CreatedAt.ToString("MMM d, yyyy")</span>
-                                    <span class="text-muted d-block">@l.CreatedAt.ToString("h:mm tt")</span>
+                                    <span class="text-muted d-block">@l.CreatedAt.ToString("h:mm:ss tt")</span>
                                 </td>
                                 <td title="@(l.UserId is int uid ? $"Account #{uid}" : "Not attributed to an account")">
                                     <span class="user-cell-name">@l.ActorName</span>
+                                    @if (!string.IsNullOrEmpty(l.Role))
+                                    {
+                                        <span class="text-muted d-block">@l.Role</span>
+                                    }
                                 </td>
                                 <td><span class="chip @level">@l.Action</span></td>
                                 <td>@l.Detail</td>

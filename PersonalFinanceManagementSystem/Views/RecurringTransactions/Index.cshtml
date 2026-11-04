@@ -81,7 +81,9 @@
                         @Html.SortHeader(Model.Query, "type", "Type", "asc", "col-chip-sm")
                         @Html.SortHeader(Model.Query, "label", "Label", "asc")
                         @Html.SortHeader(Model.Query, "frequency", "Frequency", "asc", "col-chip-sm")
+                        <th class="col-date">Start date</th>
                         @Html.SortHeader(Model.Query, "nextduedate", "Next due", "asc", "col-date")
+                        <th class="col-date">End date</th>
                         @Html.SortHeader(Model.Query, "status", "Status", "asc", "col-chip")
                         @Html.SortHeader(Model.Query, "amount", "Amount", "desc", "text-end col-amount")
                         <th class="text-end col-actions-3">Actions</th>
@@ -106,7 +108,9 @@
                                 </a>
                             </td>
                             <td class="text-muted">@item.Frequency</td>
+                            <td class="text-nowrap text-muted">@Format.Date(item.StartDate)</td>
                             <td class="text-nowrap text-muted">@Format.Date(item.NextDueDate)</td>
+                            <td class="text-nowrap text-muted">@(item.EndDate is null ? "—" : Format.Date(item.EndDate.Value))</td>
                             <td>
                                 @if (!item.IsActive)
                                 {
@@ -127,6 +131,12 @@
                             </td>
                             <td class="text-end amount @(item.Type == RecurringTransactionType.Income ? "" : "neg")">@(item.Type == RecurringTransactionType.Income ? "+" : "-")@Format.Money(item.Amount, cur)</td>
                             <td class="text-end text-nowrap">
+                                <form class="d-inline" asp-action="ToggleActive" asp-route-id="@item.Id" method="post">
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <button type="submit" class="btn-icon" title="@(item.IsActive ? "Deactivate" : "Activate")">
+                                        <svg class="ico-sm"><use href="@(item.IsActive ? "#i-x" : "#i-check")"/></svg>
+                                    </button>
+                                </form>
                                 <form class="d-inline" asp-action="Skip" asp-route-id="@item.Id" method="post">
                                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                                     <button type="submit" class="btn-icon" title="Skip next occurrence"><svg class="ico-sm"><use href="#i-chevron-right"/></svg></button>

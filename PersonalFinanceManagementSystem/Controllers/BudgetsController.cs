@@ -10,12 +10,18 @@ namespace PersonalFinanceManagementSystem.Controllers;
 public class BudgetsController : AppControllerBase
 {
     private readonly IBudgetService _budgets;
+    private readonly IExpenseService _expenses;
 
     private readonly ICategoryService _categories;
 
-    public BudgetsController(IAuthService auth, IBudgetService budgets, ICategoryService categories) : base(auth)
+    public BudgetsController(
+        IAuthService auth,
+        IBudgetService budgets,
+        IExpenseService expenses,
+        ICategoryService categories) : base(auth)
     {
         _budgets = budgets;
+        _expenses = expenses;
         _categories = categories;
     }
 
@@ -31,24 +37,61 @@ public class BudgetsController : AppControllerBase
 
     public IActionResult Index(int? year, int? month, ListQuery query)
     {
-        var now = DateTime.Now;
-        var items = _budgets.GetStatusForMonth(CurrentUser.Id, year ?? now.Year, month ?? now.Month);
-        query.Normalize(BudgetSorts.Keys, defaultSort: "used", defaultDir: "desc");
-        var vm = new BudgetListViewModel
-        {
-            Year = year ?? now.Year,
-            Month = month ?? now.Month,
-            Currency = CurrentUser.Currency,
-            Items = items,
-            Query = query,
-            Page = items.ToPaged(query, BudgetSorts,
-                (b, term) => ListQueryExtensions.AnyContains(term, b.Budget.Category,
-                    b.Budget.StartDate.ToString("MMM d, yyyy"),
-                    b.Budget.EndDate.ToString("MMM d, yyyy")))
-        };
+        var vm = BuildListViewModel(year, month, query);
         ViewData["Title"] = "Budgets";
         ViewData["ActiveNav"] = "budgets";
         return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult AddExpense(
+        [Bind(Prefix = "DailyExpense")] BudgetExpenseFormViewModel model,
+        int? year,
+        int? month,
+        ListQuery query)
+    {
+        var budget = _budgets.Get(CurrentUser.Id, model.BudgetId);
+
+        if (budget is null)
+        {
+            ModelState.AddModelError("DailyExpense.BudgetId", "The selected budget no longer exists.");
+        }
+        else if (!budget.Covers(model.Date))
+        {
+            ModelState.AddModelError("DailyExpense.Date",
+                $"This budget accepts expenses from {budget.StartDate:MMM d, yyyy} through {budget.EndDate:MMM d, yyyy} only.");
+        }
+
+        ValidateIncomePool(model);
+
+        if (!ModelState.IsValid)
+        {
+            var invalidVm = BuildListViewModel(year, month, query);
+            invalidVm.DailyExpense = model;
+            ViewData["Title"] = "Budgets";
+            ViewData["ActiveNav"] = "budgets";
+            return View("Index", invalidVm);
+        }
+
+        _expenses.Add(new Expense
+        {
+            UserId = CurrentUser.Id,
+            Category = budget!.Category,
+            Amount = model.Amount,
+            Date = model.Date.Date,
+            Note = model.Note?.Trim() ?? string.Empty,
+            BudgetId = budget.Id,
+            IncomePool = model.IncomePool
+        });
+
+        var remaining = _expenses.IncomePoolAvailable(
+            CurrentUser.Id, model.IncomePool, model.Date.Date, null);
+        TempData["Success"] = $"Daily expense of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} recorded" +
+            $" for {budget.Category}. {model.IncomePool} income balance: " +
+            $"{Helpers.Format.Money(remaining, CurrentUser.Currency)} remaining.";
+
+        return RedirectToAction(nameof(Index), new { year = year ?? budget.StartDate.Year, month = month ?? budget.StartDate.Month });
     }
 
     // ------------------------------------------------------------ create
@@ -169,7 +212,78 @@ public class BudgetsController : AppControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult DeleteExpense(int id, int? year, int? month)
+    {
+        var deleted = _expenses.Delete(CurrentUser.Id, id);
+        TempData[deleted ? "Success" : "Error"] = deleted
+            ? "Expense deleted — budget and income balances recalculated."
+            : "Expense record was not found.";
+        return RedirectToAction(nameof(Index), new { year, month });
+    }
+
     // ------------------------------------------------------------ internals
+
+    private BudgetListViewModel BuildListViewModel(int? year, int? month, ListQuery query)
+    {
+        var now = DateTime.Now;
+        var selectedYear = year ?? now.Year;
+        var selectedMonth = month ?? now.Month;
+        var items = _budgets.GetStatusForMonth(CurrentUser.Id, selectedYear, selectedMonth);
+
+        query.Normalize(BudgetSorts.Keys, defaultSort: "used", defaultDir: "desc");
+
+        var history = items
+            .SelectMany(status => _budgets.GetExpensesForBudget(CurrentUser.Id, status.Budget)
+                .Select(expense => new BudgetExpenseHistoryItem
+                {
+                    Budget = status.Budget,
+                    Expense = expense
+                }))
+            .GroupBy(item => item.Expense.Id)
+            .Select(group => group.First())
+            .OrderByDescending(item => item.Expense.Date)
+            .ThenByDescending(item => item.Expense.Id)
+            .ToList();
+
+        return new BudgetListViewModel
+        {
+            Year = selectedYear,
+            Month = selectedMonth,
+            Currency = CurrentUser.Currency,
+            Items = items,
+            DailyExpense = new BudgetExpenseFormViewModel
+            {
+                BudgetId = items.FirstOrDefault()?.Budget.Id ?? 0,
+                Date = DateTime.Today
+            },
+            DailyHistory = history,
+            Query = query,
+            Page = items.ToPaged(query, BudgetSorts,
+                (b, term) => ListQueryExtensions.AnyContains(term, b.Budget.Category,
+                    b.Budget.StartDate.ToString("MMM d, yyyy"),
+                    b.Budget.EndDate.ToString("MMM d, yyyy")))
+        };
+    }
+
+    private void ValidateIncomePool(BudgetExpenseFormViewModel model)
+    {
+        var available = _expenses.IncomePoolAvailable(
+            CurrentUser.Id, model.IncomePool, model.Date.Date, null);
+
+        if (model.Amount <= available) return;
+
+        var shortfall = model.Amount - Math.Max(available, 0m);
+        var opening = available <= 0m
+            ? $"No unused {model.IncomePool} income has been recorded on or before {Helpers.Format.Date(model.Date.Date)} yet"
+            : $"Only {Helpers.Format.Money(available, CurrentUser.Currency)} of {model.IncomePool} income recorded on or before " +
+              $"{Helpers.Format.Date(model.Date.Date)} is available";
+
+        ModelState.AddModelError("DailyExpense.IncomePool",
+            $"{opening}. This expense of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} would overdraw " +
+            $"the {model.IncomePool} income pool by {Helpers.Format.Money(shortfall, CurrentUser.Currency)}.");
+    }
 
     /// <summary>When Category is "Other", requires the custom category the
     /// user typed and stores it as the budget category. Custom text posted

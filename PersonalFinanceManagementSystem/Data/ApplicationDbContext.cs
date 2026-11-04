@@ -31,6 +31,17 @@ namespace PersonalFinanceManagementSystem.Data
                 .Property(i => i.Period)
                 .HasConversion<int>();
 
+            modelBuilder.Entity<User>()
+                .Property(u => u.PasswordResetTokenHash)
+                .HasMaxLength(64);
+            modelBuilder.Entity<User>()
+                .Property(u => u.PasswordResetRole)
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.PasswordResetOtpHash)
+                .HasMaxLength(64);
+
             // Expense income pool: same enum, nullable so pre-pool expenses stay null
             modelBuilder.Entity<Expense>()
                 .Property(e => e.IncomePool)
@@ -137,12 +148,21 @@ namespace PersonalFinanceManagementSystem.Data
             modelBuilder.Entity<ActivityLog>()
                 .Property(l => l.IpAddress)
                 .HasMaxLength(64);
+            modelBuilder.Entity<ActivityLog>()
+                .Property(l => l.Role)
+                .HasMaxLength(20);
             // Activity logs reference users only for attribution — deleting a user
             // must not fail because of (or wipe) audit history.
             modelBuilder.Entity<ActivityLog>()
                 .HasOne<User>()
                 .WithMany()
                 .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            // The account an admin's user-management action was performed on.
+            modelBuilder.Entity<ActivityLog>()
+                .HasOne<User>()
+                .WithMany()
+                .HasForeignKey(l => l.TargetUserId)
                 .OnDelete(DeleteBehavior.SetNull);
         }
     }

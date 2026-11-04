@@ -22,6 +22,17 @@ public class AuthService : IAuthService
     private static readonly TimeSpan RememberDuration =
         TimeSpan.FromDays(30);
 
+    private static readonly TimeSpan PasswordResetDuration =
+        TimeSpan.FromMinutes(15);
+
+    private static readonly TimeSpan PasswordResetOtpDuration =
+        TimeSpan.FromMinutes(5);
+
+    private static readonly TimeSpan PasswordResetOtpRequestCooldown =
+        TimeSpan.FromMinutes(1);
+
+    private const int PasswordResetOtpMaxAttempts = 5;
+
     private readonly ApplicationDbContext _db;
     private readonly IActivityLogger _activity;
 
@@ -112,6 +123,9 @@ public class AuthService : IAuthService
             Currency =
                 model.Currency,
 
+            // Public registration can only create regular user accounts.
+            Role = UserRoles.User,
+
             CreatedAt =
                 DateTime.Now
         };
@@ -136,18 +150,187 @@ public class AuthService : IAuthService
 
         _db.SaveChanges();
 
-        _activity.Log(context, user.Id, user.FullName, "Registration",
+        _activity.Log(context, user.Id, user.FullName, user.Role, "Registration",
             $"New account registered ({user.Email}).");
 
-        // IMPORTANT:
-        // Do NOT create a session here.
-        //
-        // The user must log in after creating the account.
+        // Establish the same session used by a normal user sign-in so the new
+        // account can go directly to the Finance Dashboard.
+        context.Session.SetString(
+            SessionKey,
+            user.Id.ToString());
 
         return (
             true,
             string.Empty
         );
+    }
+
+    public (bool Success, string Error, string? Otp, string? RecipientEmail, int? UserId, string? ResetRole) CreatePasswordResetOtp(
+        string email,
+        string requestedRole)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var user = _db.Users.FirstOrDefault(u =>
+            u.Email == normalizedEmail &&
+            u.IsActive);
+
+        if (user is null)
+        {
+            return (false, string.Empty, null, null, null, null);
+        }
+
+        var role = string.Equals(user.Role, UserRoles.Admin, StringComparison.OrdinalIgnoreCase)
+            ? UserRoles.Admin
+            : UserRoles.User;
+
+        var now = DateTime.Now;
+        if (user.PasswordResetOtpRequestedAt is DateTime requestedAt &&
+            requestedAt.Add(PasswordResetOtpRequestCooldown) > now)
+        {
+            return (false, "Please wait before requesting another verification code.", null, null, user.Id, role);
+        }
+
+        var otp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        user.PasswordResetOtpHash = TokenHash(otp);
+        user.PasswordResetOtpExpires = now.Add(PasswordResetOtpDuration);
+        user.PasswordResetOtpAttempts = 0;
+        user.PasswordResetOtpRequestedAt = now;
+        user.PasswordResetOtpVerified = false;
+        user.PasswordResetRole = role;
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpires = null;
+        _db.SaveChanges();
+
+        return (true, string.Empty, otp, user.Email, user.Id, role);
+    }
+
+    public void CancelPasswordResetOtp(string email, string requestedRole)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var role = string.Equals(
+            requestedRole.Trim(), UserRoles.Admin, StringComparison.OrdinalIgnoreCase)
+            ? UserRoles.Admin
+            : UserRoles.User;
+        var user = _db.Users.FirstOrDefault(u =>
+            u.Email == normalizedEmail &&
+            u.PasswordResetRole == role);
+
+        if (user is null)
+        {
+            return;
+        }
+
+        ClearPasswordResetOtp(user);
+        user.PasswordResetOtpRequestedAt = null;
+        user.PasswordResetRole = null;
+        _db.SaveChanges();
+    }
+
+    public (bool Success, string Error, string? Token) VerifyPasswordResetOtp(
+        int userId,
+        string requestedRole,
+        string otp)
+    {
+        var isAdministratorRequest = string.Equals(
+            requestedRole.Trim(), UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
+        var role = isAdministratorRequest ? UserRoles.Admin : UserRoles.User;
+        var user = _db.Users.FirstOrDefault(u =>
+            u.Id == userId &&
+            u.PasswordResetRole == role &&
+            u.Role == role &&
+            u.IsActive);
+
+        if (user is null || user.PasswordResetOtpHash is null)
+        {
+            return (false, "The verification code is invalid or has expired.", null);
+        }
+
+        if (user.PasswordResetOtpExpires <= DateTime.Now)
+        {
+            ClearPasswordResetOtp(user);
+            _db.SaveChanges();
+            return (false, "The verification code is invalid or has expired.", null);
+        }
+
+        if (user.PasswordResetOtpAttempts >= PasswordResetOtpMaxAttempts)
+        {
+            return (false, "Too many incorrect attempts. Request a new verification code.", null);
+        }
+
+        if (!CryptographicEquals(user.PasswordResetOtpHash, TokenHash(otp.Trim())))
+        {
+            user.PasswordResetOtpAttempts++;
+            _db.SaveChanges();
+            return (false, user.PasswordResetOtpAttempts >= PasswordResetOtpMaxAttempts
+                ? "Too many incorrect attempts. Request a new verification code."
+                : "The verification code is invalid.", null);
+        }
+
+        var resetToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetTokenHash = TokenHash(resetToken);
+        user.PasswordResetTokenExpires = DateTime.Now.Add(PasswordResetDuration);
+        user.PasswordResetOtpVerified = true;
+        ClearPasswordResetOtp(user, preserveVerified: true);
+        _db.SaveChanges();
+
+        return (true, string.Empty, resetToken);
+    }
+
+    private static bool CryptographicEquals(string expectedHash, string actualHash)
+        => CryptographicOperations.FixedTimeEquals(
+            Convert.FromHexString(expectedHash),
+            Convert.FromHexString(actualHash));
+
+    private static void ClearPasswordResetOtp(User user, bool preserveVerified = false)
+    {
+        user.PasswordResetOtpHash = null;
+        user.PasswordResetOtpExpires = null;
+        user.PasswordResetOtpAttempts = 0;
+        if (!preserveVerified)
+        {
+            user.PasswordResetOtpVerified = false;
+        }
+    }
+
+    public (bool Success, string Error, string? Role) ResetPassword(
+        string token,
+        string requestedRole,
+        string newPassword,
+        HttpContext context)
+    {
+        var tokenHash = TokenHash(token);
+        var isAdministratorRequest =
+            string.Equals(requestedRole.Trim(), UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
+        var role = isAdministratorRequest ? UserRoles.Admin : UserRoles.User;
+        var user = _db.Users.FirstOrDefault(u =>
+            u.PasswordResetTokenHash == tokenHash &&
+            u.PasswordResetTokenExpires > DateTime.Now &&
+            u.PasswordResetOtpVerified &&
+            u.PasswordResetRole == role &&
+            u.Role.ToLower() == role.ToLower() &&
+            u.IsActive);
+
+        if (user is null)
+        {
+            return (false, "This password reset session is invalid or has expired.", null);
+        }
+
+        user.PasswordSalt = SecurityHelper.NewSalt();
+        user.PasswordHash = SecurityHelper.Hash(newPassword, user.PasswordSalt);
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpires = null;
+        user.PasswordResetRole = null;
+        user.PasswordResetOtpVerified = false;
+        user.PasswordResetOtpRequestedAt = null;
+        user.RememberTokenHash = null;
+        user.RememberTokenExpires = null;
+        _db.SaveChanges();
+
+        context.Session.SetString(
+            SessionKey,
+            user.Id.ToString());
+
+        return (true, "", isAdministratorRequest ? UserRoles.Admin : UserRoles.User);
     }
 
     // ------------------------------------------------------------
@@ -157,6 +340,7 @@ public class AuthService : IAuthService
     public (bool Success, string Error) Login(
         string email,
         string password,
+        string requestedRole,
         bool rememberMe,
         HttpContext context)
     {
@@ -195,6 +379,14 @@ public class AuthService : IAuthService
             );
         }
 
+        if (!string.Equals(user.Role, requestedRole, StringComparison.OrdinalIgnoreCase))
+        {
+            return (
+                false,
+                "This account is not authorized for the selected sign-in role."
+            );
+        }
+
         // --------------------------------------------------------
         // ACCOUNT ACTIVITY CHECK
         // --------------------------------------------------------
@@ -203,7 +395,7 @@ public class AuthService : IAuthService
         // until an admin re-activates it.
         if (!user.IsActive)
         {
-            _activity.Log(context, user.Id, user.FullName, "SigninBlocked",
+            _activity.Log(context, user.Id, user.FullName, user.Role, "SigninBlocked",
                 "Sign-in blocked: account is deactivated.");
 
             return (
@@ -245,7 +437,7 @@ public class AuthService : IAuthService
             ClearRememberToken(user, context);
         }
 
-        _activity.Log(context, user.Id, user.FullName,
+        _activity.Log(context, user.Id, user.FullName, user.Role,
             user.Role == UserRoles.Admin ? "AdminSignin" : "Signin",
             $"{(rememberMe ? "Signed in (remember me)" : "Signed in")}.");
 
@@ -269,14 +461,18 @@ public class AuthService : IAuthService
         {
             ClearRememberToken(current, context);
 
-            _activity.Log(context, current.Id, current.FullName,
+            _activity.Log(context, current.Id, current.FullName, current.Role,
                 current.Role == UserRoles.Admin ? "AdminSignout" : "Signout",
                 "Signed out.");
         }
 
-        context.Session.Remove(SessionKey);
+        // Drop everything held in the session (user id, any per-page state) so
+        // no part of the authenticated session survives the sign-out.
+        context.Session.Clear();
 
-        context.Response.Cookies.Delete(RememberCookieName);
+        context.Response.Cookies.Delete(
+            RememberCookieName,
+            new CookieOptions { Path = "/" });
     }
 
     // ------------------------------------------------------------

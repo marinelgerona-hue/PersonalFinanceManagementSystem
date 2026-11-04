@@ -42,6 +42,10 @@ public abstract class AppControllerBase : Controller
         CurrentUser = user;
         ViewBag.User = user;
 
+        // A signed-in page must never come back from the browser cache (Back
+        // button after logout): every visit re-checks the session server-side.
+        NoStore();
+
         try
         {
             HttpContext.RequestServices.GetService<IRecurringTransactionService>()?.GenerateDueOccurrences(user.Id);
@@ -53,6 +57,15 @@ public abstract class AppControllerBase : Controller
 
         ViewBag.Nav = BuildNavState(user);
         base.OnActionExecuting(context);
+    }
+
+    /// <summary>Marks the response as private and uncacheable so the Back/Forward
+    /// cache can't redisplay a protected page after the user signs out.</summary>
+    protected void NoStore()
+    {
+        Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers.Pragma = "no-cache";
+        Response.Headers.Expires = "0";
     }
 
     /// <summary>Budget/goal signals for the sidebar badge, budget meter and notification bell.

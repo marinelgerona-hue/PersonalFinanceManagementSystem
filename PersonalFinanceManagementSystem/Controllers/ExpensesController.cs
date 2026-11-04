@@ -12,18 +12,29 @@ public class ExpensesController : AppControllerBase
     private readonly IIncomeService _incomes;
     private readonly IBudgetService _budgets;
     private readonly ICategoryService _categories;
+    private readonly IActivityLogger _activity;
 
     public ExpensesController(
         IAuthService auth,
         IExpenseService expenses,
         IIncomeService incomes,
         IBudgetService budgets,
-        ICategoryService categories) : base(auth)
+        ICategoryService categories,
+        IActivityLogger activity) : base(auth)
     {
         _expenses = expenses;
         _incomes = incomes;
         _budgets = budgets;
         _categories = categories;
+        _activity = activity;
+    }
+
+    /// <summary>Audits expense changes made while signed in as an administrator.
+    /// Regular users' own expense edits are not system activity.</summary>
+    private void LogAdminChange(string action, string detail)
+    {
+        if (CurrentUser.Role == UserRoles.Admin)
+            _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, CurrentUser.Role, action, detail);
     }
 
     public IActionResult Index(ListQuery query)
@@ -118,6 +129,11 @@ public class ExpensesController : AppControllerBase
 
         var remaining = _expenses.IncomePoolAvailable(
             CurrentUser.Id, model.IncomePool, model.Date.Date, null);
+
+        LogAdminChange("ExpenseCreated",
+            $"Added expense of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} " +
+            $"for {model.Category} dated {model.Date:MMM d, yyyy}.");
+
         TempData["Success"] = $"Expense of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} added" +
             $" — deducted from the {model.IncomePool} income pool ({Helpers.Format.Money(remaining, CurrentUser.Currency)} remaining)." +
             (budget is null ? string.Empty : $" Also deducted from the {budget.Category} budget.");
@@ -181,6 +197,13 @@ public class ExpensesController : AppControllerBase
             IncomePool = model.IncomePool
         });
 
+        if (updated)
+        {
+            LogAdminChange("ExpenseUpdated",
+                $"Updated expense record #{id} to {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} " +
+                $"for {model.Category} dated {model.Date:MMM d, yyyy}.");
+        }
+
         TempData[updated ? "Success" : "Error"] = updated
             ? $"Expense updated — deducted from the {model.IncomePool} income pool."
             : "Expense record was not found.";
@@ -212,6 +235,9 @@ public class ExpensesController : AppControllerBase
     public IActionResult Delete(int id)
     {
         var deleted = _expenses.Delete(CurrentUser.Id, id);
+        if (deleted)
+            LogAdminChange("ExpenseDeleted", $"Deleted expense record #{id}.");
+
         TempData[deleted ? "Success" : "Error"] = deleted
             ? "Expense record deleted — budget balances recalculated."
             : "Expense record was not found.";

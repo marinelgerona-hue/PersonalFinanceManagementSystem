@@ -15,7 +15,7 @@
                 <a href="#how-it-works">How it works</a>
             </nav>
             <div class="lp-header-actions">
-                <a class="lp-link d-none d-sm-inline" asp-controller="Account" asp-action="Login">Log in</a>
+                <a class="btn btn-soft btn-lg d-none d-sm-inline" href="#roleSelectionModal" data-bs-toggle="modal" data-bs-target="#roleSelectionModal">Log in</a>
                 <a class="btn btn-fin" asp-controller="Account" asp-action="Register">Get started</a>
             </div>
         </div>
@@ -35,8 +35,45 @@
                     <a class="btn btn-fin btn-lg" asp-controller="Account" asp-action="Register">
                         Create free account <svg class="ico-sm"><use href="#i-arrow-right"/></svg>
                     </a>
-                    <a class="btn btn-soft btn-lg" asp-controller="Account" asp-action="Login">Sign in</a>
+                    <a class="btn btn-soft btn-lg" href="#roleSelectionModal" data-bs-toggle="modal" data-bs-target="#roleSelectionModal">Sign in</a>
                 </div>
+
+<div class="modal fade role-selection-modal" id="roleSelectionModal" tabindex="-1"
+     aria-labelledby="roleSelectionTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="roleSelectionTitle">Choose how to sign in</h2>
+                    <p class="role-selection-subtitle mb-0">Select the account area you want to open.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+            </div>
+            <form asp-controller="Account" asp-action="Login" method="get">
+                <div class="modal-body role-selection-options">
+                    <label class="role-selection-option">
+                        <input class="form-check-input" type="radio" name="role" value="User" checked />
+                        <span class="role-selection-copy">
+                            <strong>User</strong>
+                            <span>Access personal finance features.</span>
+                        </span>
+                    </label>
+                    <label class="role-selection-option">
+                        <input class="form-check-input" type="radio" name="role" value="Admin" />
+                        <span class="role-selection-copy">
+                            <strong>Administrator</strong>
+                            <span>Access system administration features.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-soft" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-fin">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
                 <ul class="lp-checks">
                     <li><svg class="ico-sm"><use href="#i-circle-check"/></svg>No credit card required</li>
                     <li><svg class="ico-sm"><use href="#i-circle-check"/></svg>Multiple currencies</li>

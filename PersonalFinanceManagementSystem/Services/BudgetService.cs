@@ -202,6 +202,20 @@ public class BudgetService : IBudgetService
             .FirstOrDefault();
     }
 
+    public List<Expense> GetExpensesForBudget(int userId, Budget budget)
+    {
+        return _db.Expenses
+            .Where(e =>
+                e.UserId == userId &&
+                e.Date >= budget.StartDate.Date &&
+                e.Date < budget.EndDate.Date.AddDays(1))
+            .ToList()
+            .Where(e => Counts(budget, e))
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .ToList();
+    }
+
     public List<BudgetOption> GetOptionsForExpense(
         int userId,
         string? category,

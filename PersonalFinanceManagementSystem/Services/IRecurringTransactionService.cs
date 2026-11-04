@@ -8,12 +8,14 @@ public interface IRecurringTransactionService
     RecurringTransaction? Get(int userId, int id);
     RecurringTransaction Add(RecurringTransaction item);
     bool Update(RecurringTransaction item);
+    bool ToggleActive(int userId, int id);
     bool Delete(int userId, int id);
 
     /// <summary>Generates every Income/Expense row for occurrences whose NextDueDate
     /// is on or before today, backfilling all missed periods, and advances
     /// NextDueDate past today. Cheap no-op when nothing is due. Never throws.</summary>
     int GenerateDueOccurrences(int userId);
+    int GenerateDueOccurrencesForAllUsers();
 
     /// <summary>Advances NextDueDate one period forward without generating a row.</summary>
     bool SkipNext(int userId, int id);

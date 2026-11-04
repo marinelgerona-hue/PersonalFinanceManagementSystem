@@ -648,3 +648,12 @@
 
     document.querySelectorAll('.report-pill-group, .reports-nav').forEach(init);
 })();
+
+// After signing out, a protected page restored from the browser's back/forward cache
+// would still show the previous account's data. Force a fresh request so the server
+// re-checks the session and sends anonymous visitors to the login page.
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted && !document.body.classList.contains('auth-body')) {
+        window.location.reload();
+    }
+});

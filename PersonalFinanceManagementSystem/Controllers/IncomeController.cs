@@ -10,11 +10,25 @@ public class IncomeController : AppControllerBase
 {
     private readonly IIncomeService _incomes;
     private readonly ICategoryService _categories;
+    private readonly IActivityLogger _activity;
 
-    public IncomeController(IAuthService auth, IIncomeService incomes, ICategoryService categories) : base(auth)
+    public IncomeController(
+        IAuthService auth,
+        IIncomeService incomes,
+        ICategoryService categories,
+        IActivityLogger activity) : base(auth)
     {
         _incomes = incomes;
         _categories = categories;
+        _activity = activity;
+    }
+
+    /// <summary>Audits income changes made while signed in as an administrator.
+    /// Regular users' own income edits are not system activity.</summary>
+    private void LogAdminChange(string action, string detail)
+    {
+        if (CurrentUser.Role == UserRoles.Admin)
+            _activity.Log(HttpContext, CurrentUser.Id, CurrentUser.FullName, CurrentUser.Role, action, detail);
     }
 
     /// <summary>Sortable columns of the income table.</summary>
@@ -105,6 +119,10 @@ public class IncomeController : AppControllerBase
             Date = model.Date,
             Note = model.Note ?? string.Empty
         });
+
+        LogAdminChange("IncomeCreated",
+            $"Added income of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} " +
+            $"from {model.Source} dated {model.Date:MMM d, yyyy}.");
 
         TempData["Success"] = $"Income of {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} added.";
         return RedirectToAction(nameof(Index));
@@ -197,6 +215,13 @@ public class IncomeController : AppControllerBase
             Note = model.Note ?? string.Empty
         });
 
+        if (updated)
+        {
+            LogAdminChange("IncomeUpdated",
+                $"Updated income record #{id} to {Helpers.Format.Money(model.Amount, CurrentUser.Currency)} " +
+                $"from {model.Source} dated {model.Date:MMM d, yyyy}.");
+        }
+
         TempData[updated ? "Success" : "Error"] = updated
             ? "Income updated."
             : "Income record was not found.";
@@ -228,6 +253,9 @@ public class IncomeController : AppControllerBase
     public IActionResult Delete(int id)
     {
         var deleted = _incomes.Delete(CurrentUser.Id, id);
+        if (deleted)
+            LogAdminChange("IncomeDeleted", $"Deleted income record #{id}.");
+
         TempData[deleted ? "Success" : "Error"] = deleted
             ? "Income record deleted."
             : "Income record was not found.";
