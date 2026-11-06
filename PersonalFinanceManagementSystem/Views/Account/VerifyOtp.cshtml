@@ -12,7 +12,7 @@
             <span>Finance <span class="text-brand">Management</span></span>
         </div>
         <h1 class="auth-title">Verify your email</h1>
-        <p class="auth-sub">Check <strong>marinelquimson@gmail.com</strong> for your six-digit code. The code expires in 5 minutes.</p>
+        <p class="auth-sub">Check <strong>@(ViewData["RecoveryEmail"] is string recoveryEmail ? recoveryEmail : "your recovery email")</strong> for your six-digit code. The code expires in 5 minutes.</p>
         <div asp-validation-summary="ModelOnly" class="banner banner-error"></div>
         <form asp-action="VerifyOtp" method="post" novalidate class="auth-form">
             <input type="hidden" asp-for="UserId" />

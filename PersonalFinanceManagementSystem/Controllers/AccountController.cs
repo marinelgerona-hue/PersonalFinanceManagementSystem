@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using PersonalFinanceManagementSystem.Models;
 using PersonalFinanceManagementSystem.Models.ViewModels;
 using PersonalFinanceManagementSystem.Services;
@@ -13,15 +14,18 @@ public class AccountController : Controller
     private readonly IAuthService _auth;
     private readonly IEmailService _email;
     private readonly ILogger<AccountController> _logger;
+    private readonly EmailSettings _emailSettings;
 
     public AccountController(
         IAuthService auth,
         IEmailService email,
-        ILogger<AccountController> logger)
+        ILogger<AccountController> logger,
+        IOptions<EmailSettings> emailSettings)
     {
         _auth = auth;
         _email = email;
         _logger = logger;
+        _emailSettings = emailSettings.Value;
     }
 
     // ------------------------------------------------------------
@@ -197,7 +201,7 @@ public class AccountController : Controller
             }
 
             TempData["ToastTitle"] = "Email sent";
-            TempData["Success"] = "A verification code has been sent. Check your email to continue.";
+            TempData["Success"] = $"A verification code has been sent to {_emailSettings.RecoveryEmail.Trim()}. Check that email to continue.";
             return RedirectToAction(nameof(VerifyOtp), new
             {
                 userId = result.UserId,
@@ -223,6 +227,9 @@ public class AccountController : Controller
     public IActionResult VerifyOtp(int userId, string email, string? role)
     {
         var requestedRole = NormalizeRole(role) ?? UserRoles.User;
+        // The OTP is delivered to the recovery email configured in User Secrets,
+        // never to an address entered on the form.
+        ViewData["RecoveryEmail"] = _emailSettings.RecoveryEmail.Trim();
         return View(new VerifyOtpViewModel
         {
             UserId = userId,
@@ -290,7 +297,7 @@ public class AccountController : Controller
             return View("VerifyOtp", model);
         }
 
-        TempData["Success"] = "A new verification code was sent to marinelquimson@gmail.com.";
+        TempData["Success"] = $"A new verification code was sent to {_emailSettings.RecoveryEmail.Trim()}.";
         return RedirectToAction(nameof(VerifyOtp), new
         {
             userId = result.UserId,

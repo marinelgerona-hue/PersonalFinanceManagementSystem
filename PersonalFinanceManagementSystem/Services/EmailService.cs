@@ -7,10 +7,6 @@ namespace PersonalFinanceManagementSystem.Services;
 
 public sealed class EmailService : IEmailService
 {
-    private const string RequiredSenderEmail = "marinelquimson@gmail.com";
-    private const string RequiredRecoveryEmail = "marinelquimson@gmail.com";
-    private const string RequiredSmtpHost = "smtp.gmail.com";
-
     private readonly EmailSettings _settings;
 
     public EmailService(IOptions<EmailSettings> settings)
@@ -23,26 +19,31 @@ public sealed class EmailService : IEmailService
         string otp,
         CancellationToken cancellationToken = default)
     {
+        // Everything below comes from EmailSettings (bound to User Secrets).
+        // No email address, password or SMTP credential is hardcoded here.
+
         var senderEmail = _settings.Email.Trim();
         var appPassword = string.Concat(
             _settings.AppPassword.Where(character => !char.IsWhiteSpace(character)));
-        var smtpHost = string.IsNullOrWhiteSpace(_settings.SmtpServer)
-            ? _settings.Host.Trim()
-            : _settings.SmtpServer.Trim();
+        var smtpHost = _settings.SmtpServer.Trim();
+        var port = _settings.Port;
         var recoveryEmail = _settings.RecoveryEmail.Trim();
 
-        if (!string.Equals(senderEmail, RequiredSenderEmail, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(senderEmail))
             throw new InvalidOperationException(
-                $"EmailSettings:Email must be configured as {RequiredSenderEmail} in User Secrets.");
+                "EmailSettings:Email is not configured in User Secrets.");
         if (string.IsNullOrWhiteSpace(appPassword))
-            throw new InvalidOperationException("EmailSettings:AppPassword is not configured in User Secrets.");
-        if (appPassword.Length != 16)
-            throw new InvalidOperationException("EmailSettings:AppPassword must be a valid 16-character Gmail app password.");
-        if (!string.Equals(recoveryEmail, RequiredRecoveryEmail, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"EmailSettings:RecoveryEmail must be configured as {RequiredRecoveryEmail}.");
-        if (!string.Equals(smtpHost, RequiredSmtpHost, StringComparison.OrdinalIgnoreCase) || _settings.Port != 587)
-            throw new InvalidOperationException("Gmail SMTP must use smtp.gmail.com on port 587.");
+                "EmailSettings:AppPassword is not configured in User Secrets.");
+        if (string.IsNullOrWhiteSpace(smtpHost))
+            throw new InvalidOperationException(
+                "EmailSettings:SmtpServer is not configured in User Secrets.");
+        if (port <= 0)
+            throw new InvalidOperationException(
+                "EmailSettings:Port is not configured in User Secrets.");
+        if (string.IsNullOrWhiteSpace(recoveryEmail))
+            throw new InvalidOperationException(
+                "EmailSettings:RecoveryEmail is not configured in User Secrets.");
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(_settings.FromName, senderEmail));
@@ -50,11 +51,11 @@ public sealed class EmailService : IEmailService
         message.Subject = "Your Finance Management verification code";
         message.Body = new TextPart("plain")
         {
-            Text = $"Your password reset verification code is: {otp}\n\nThis code expires in 5 minutes. If you did not request this, you can safely ignore this email."
+            Text = $"Your password reset verification code for {accountEmail} is: {otp}\n\nThis code expires in 5 minutes. If you did not request this, you can safely ignore this email."
         };
 
         using var smtp = new SmtpClient();
-        await smtp.ConnectAsync(smtpHost, _settings.Port, SecureSocketOptions.StartTls, cancellationToken);
+        await smtp.ConnectAsync(smtpHost, port, SecureSocketOptions.StartTls, cancellationToken);
         await smtp.AuthenticateAsync(senderEmail, appPassword, cancellationToken);
         await smtp.SendAsync(message, cancellationToken);
         await smtp.DisconnectAsync(true, cancellationToken);
