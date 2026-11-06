@@ -25,7 +25,10 @@ public sealed class EmailService : IEmailService
         var senderEmail = _settings.Email.Trim();
         var appPassword = string.Concat(
             _settings.AppPassword.Where(character => !char.IsWhiteSpace(character)));
-        var smtpHost = _settings.SmtpServer.Trim();
+        var smtpHost = NormalizeSmtpHost(
+            string.IsNullOrWhiteSpace(_settings.SmtpServer)
+                ? _settings.Host
+                : _settings.SmtpServer);
         var port = _settings.Port;
         var recoveryEmail = _settings.RecoveryEmail.Trim();
 
@@ -59,5 +62,19 @@ public sealed class EmailService : IEmailService
         await smtp.AuthenticateAsync(senderEmail, appPassword, cancellationToken);
         await smtp.SendAsync(message, cancellationToken);
         await smtp.DisconnectAsync(true, cancellationToken);
+    }
+
+    private static string NormalizeSmtpHost(string value)
+    {
+        var host = value.Trim();
+        if (host.Length == 0) return string.Empty;
+
+        if (Uri.TryCreate(host, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        var separator = host.IndexOf(':');
+        return separator >= 0 ? host[..separator].Trim() : host;
     }
 }
